@@ -11,7 +11,7 @@
 
 
 # start of module
-module RIXSCalculator2.0
+module RIXSCalculator_ver2
 
 
     # GENERAL USINGS
@@ -21,6 +21,8 @@ module RIXSCalculator2.0
 
     # INCLUDE EVERTHING FROM SUBFILES
     include("basis/basis.jl")
+    include("coordinate_frames/coordinate_frames.jl")
+    include("operators/operators.jl")
     
 
 

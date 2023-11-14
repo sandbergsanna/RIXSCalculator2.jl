@@ -7,7 +7,7 @@
 
 ``\\left| l,m_l,s,m_s \\right>`` represented as `{Int64, Int64, Rational{Int64}, Rational{Int64}}`.
 """
-struct BasisStateLS <: AbstractSPSSBasisState
+struct BasisStateLS #<: AbstractSPSSBasisState
     # l part
     l   :: Int64
     ml  :: Int64
