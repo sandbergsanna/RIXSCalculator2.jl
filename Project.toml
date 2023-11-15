@@ -1,0 +1,17 @@
+name = "RIXSCalculator_ver2"
+uuid = "476f1527-6383-4387-ad43-e17232a54417"
+authors = ["Anna Sandberg"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1"
+
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
