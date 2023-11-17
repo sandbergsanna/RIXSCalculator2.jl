@@ -1,6 +1,7 @@
 # using packages
 using LinearAlgebra
 using Combinatorics
+using SparseArrays
 
 # abstract type
 include("operator_abstract_type.jl")

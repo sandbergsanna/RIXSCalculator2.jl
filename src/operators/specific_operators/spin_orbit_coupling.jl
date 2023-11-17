@@ -52,7 +52,7 @@ This function computes the matrix representation of the Spin Orbit Operator with
 """
 function SpinOrbitOperator(basis::SPB, lambda::Real) where {SPB<:SPBasis{BasisStateLS}}
     # construct new operator
-    op = SpinOrbitOperator{SPB}(basis, zeros(Complex{Float64}, length(basis), length(basis)), lambda, CoordinateFrame())
+    op = SpinOrbitOperator{SPB}(basis, spzeros(Complex{Float64}, length(basis), length(basis)), lambda, CoordinateFrame())
     # recalculate the matrix representation
     recalculate!(op)
     # return the operator
@@ -61,7 +61,7 @@ end
 function SpinOrbitOperator(basis::SPB, lambda::Real) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     # construct new operator
     basis_internal = getT2GBasisLS()
-    op = SpinOrbitOperator{SPBasis{BasisStateLS}}(basis_internal, zeros(Complex{Float64}, length(basis_internal), length(basis_internal)), lambda, CoordinateFrame())
+    op = SpinOrbitOperator{SPBasis{BasisStateLS}}(basis_internal, spzeros(Complex{Float64}, length(basis_internal), length(basis_internal)), lambda, CoordinateFrame())
     # recalculate the matrix representation
     recalculate!(op)
     # build a projection operator around it
@@ -112,7 +112,7 @@ function recalculate!(operator :: SpinOrbitOperator{SPB}, recursive::Bool=true, 
         operator.matrix_rep .*=0.0
     else
         # create new matrix
-        operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+        operator.matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
     end
     # recalculate the matrix elements
     for alpha in 1:length(basis(operator))
