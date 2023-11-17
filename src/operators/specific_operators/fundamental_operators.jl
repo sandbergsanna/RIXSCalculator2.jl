@@ -139,5 +139,28 @@ function operatorSy(s::Rational, msp::Rational, ms::Rational) :: Complex{Float64
     return -0.5*im * (operatorSplus(s,msp,ms) - operatorSminus(s,msp,ms))
 end
 
+# Spin operators with respect to local coordinate frames
+# ASSUMING in coordinate frame cf, the quantisation is given by S = (Sx, Sy, Sz)
+# --> new operator in external coordinates
+
+function operatorSx(s::Rational, msp::Rational, ms::Rational, cf::CoordinateFrame) :: Complex{Float64}
+    # find out what the x axis is in this frame
+    x_prime = get_in_global_coordinates(cf, [1,0,0])
+    # return superposition of operators
+    return operatorSx(s,msp,ms)*x_prime[1] + operatorSy(s,msp,ms)*x_prime[2] + operatorSz(s,msp,ms)*x_prime[3]
+end
+function operatorSy(s::Rational, msp::Rational, ms::Rational, cf::CoordinateFrame) :: Complex{Float64}
+    # find out what the y axis is in this frame
+    y_prime = get_in_global_coordinates(cf, [0,1,0])
+    # return superposition of operators
+    return operatorSx(s,msp,ms)*y_prime[1] + operatorSy(s,msp,ms)*y_prime[2] + operatorSz(s,msp,ms)*y_prime[3]
+end
+function operatorSz(s::Rational, msp::Rational, ms::Rational, cf::CoordinateFrame) :: Complex{Float64}
+    # find out what the z axis is in this frame
+    z_prime = get_in_global_coordinates(cf, [0,0,1])
+    # return superposition of operators
+    return operatorSx(s,msp,ms)*z_prime[1] + operatorSy(s,msp,ms)*z_prime[2] + operatorSz(s,msp,ms)*z_prime[3]
+end
+
 # export operators
 export operatorSx, operatorSy, operatorSz, operatorSplus, operatorSminus

@@ -31,7 +31,7 @@ This object refers to the Spin Orbit Operator.
 - `spin_quantization :: CoordinateFrame`, the spin quantization axis.
 
 """
-mutable struct SpinOrbitOperator{SPB} #<: AbstractSPSSOperator{SPB}
+mutable struct SpinOrbitOperator{SPB} <: AbstractSPSSOperator{SPB}
     # the basis
     basis :: SPB
     # the current matrix representation (without prefactor)
@@ -58,6 +58,18 @@ function SpinOrbitOperator(basis::SPB, lambda::Real) where {SPB<:SPBasis{BasisSt
     # return the operator
     return op
 end
+function SpinOrbitOperator(basis::SPB, lambda::Real) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
+    # construct new operator
+    basis_internal = getT2GBasisLS()
+    op = SpinOrbitOperator{SPBasis{BasisStateLS}}(basis_internal, zeros(Complex{Float64}, length(basis_internal), length(basis_internal)), lambda, CoordinateFrame())
+    # recalculate the matrix representation
+    recalculate!(op)
+    # build a projection operator around it
+    op_proj = SPSSProjectorOperator(op, basis)
+    # return the operator
+    return op_proj
+end
+
 
 
 # export operator type
@@ -97,7 +109,7 @@ function recalculate!(operator :: SpinOrbitOperator{SPB}, recursive::Bool=true, 
     # check if the size of matrix is still okay
     if size(operator.matrix_rep,1) == length(basis(operator)) && size(operator.matrix_rep,2) == length(basis(operator))
         # size is okay, multiply matrix by 0 to erase all elements
-        operator.matrix_rep .*= 0.0
+        operator.matrix_rep .*=0.0
     else
         # create new matrix
         operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
