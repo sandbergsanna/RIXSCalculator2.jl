@@ -35,7 +35,7 @@ mutable struct SpinOrbitOperator{SPB} <: AbstractSPSSOperator{SPB}
     # the basis
     basis :: SPB
     # the current matrix representation (without prefactor)
-    matrix_rep :: Matrix{Complex{Float64}}
+    matrix_rep :: SparseMatrixCSC{Complex{Float64}}
     # the prefactor
     lambda :: Float64
     # spin quantisation axis
@@ -100,7 +100,7 @@ function basis(operator :: SpinOrbitOperator{SPB}) :: SPB where {SPSSBS<:BasisSt
 end
 
 # obtain the matrix representation
-function matrix_representation(operator :: SpinOrbitOperator{SPB}) :: Matrix{Complex{Float64}} where {SPSSBS<:BasisStateLS, SPB<:SPBasis{SPSSBS}}
+function matrix_representation(operator :: SpinOrbitOperator{SPB}) :: SparseMatrixCSC{Complex{Float64}} where {SPSSBS<:BasisStateLS, SPB<:SPBasis{SPSSBS}}
     return operator.matrix_rep .* operator.lambda
 end
 

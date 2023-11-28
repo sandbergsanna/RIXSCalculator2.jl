@@ -4,7 +4,7 @@ function eigensystem(operator :: AbstractOperator{B}; subtract_GS::Bool = false,
     if make_hermitian
         m = Hermitian((m+m')/2)
     end
-    es = eigen(m)
+    es = eigen(Matrix(m))
     evalues = Float64[real(v) for v in es.values]
     # The kth eigenvector can be obtained from the slice es.vectors[:, k]
     evectors = [es.vectors[:,k] for k in 1:length(evalues)]
@@ -34,7 +34,7 @@ function eigensystem(operator :: AbstractOperator{B}, basis_new::B2; subtract_GS
     if make_hermitian
         m = Hermitian((m+m')/2)
     end
-    es = eigen(m)
+    es = eigen(Matrix(m))
     evalues = Float64[real(v) for v in es.values]
     # The kth eigenvector can be obtained from the slice es.vectors[:, k]
     evectors = [es.vectors[:,k] for k in 1:length(evalues)]
@@ -63,7 +63,7 @@ export eigensystem
 
 
 function energies(op :: AbstractOperator)
-    return sort(real.(eigvals(matrix_representation(op))))
+    return sort(real.(eigvals(Matrix(matrix_representation(op)))))
 end
 export energies
 
