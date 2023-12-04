@@ -26,8 +26,6 @@ mutable struct SPLocalMSOperator{
     # the basis and its indices in the multi site basis
     basis_ss   :: SPBasis{SPSSBS}
     indices_ss :: Vector{Int64}
-    # the matrix representation
-    matrix_rep :: Matrix{Complex{Float64}}
 end
 
 # custom constructor
@@ -38,9 +36,7 @@ This function computes the matrix representation of the single particle - multi 
 """
 function SPLocalMSOperator(basis :: SPMSB, operator :: SPO, site :: Int64) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}, SPO <: AbstractSPSSOperator{SPBasis{SPSSBS}}}
     # create a new operator
-    op = SPLocalMSOperator{SPSSBS, SPMSB, SPO}(basis, operator, site, getSingleSiteBasis(basis, site), Int64[i     for i in 1:length(basis) if basis[i].site == site], zeros(length(basis), length(basis)))
-    # recalculate the matrix representation
-    recalculate!(op, true)
+    op = SPLocalMSOperator{SPSSBS, SPMSB, SPO}(basis, operator, site, getSingleSiteBasis(basis, site), Int64[i     for i in 1:length(basis) if basis[i].site == site])
     # return the operator
     return op
 end
@@ -73,12 +69,12 @@ function basis(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}) :: SPMSB where
 end
 
 # obtain the matrix representation
-function matrix_representation(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}) :: Matrix{Complex{Float64}} where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}, SPO <: AbstractSPSSOperator{SPBasis{SPSSBS}}}
-    return operator.matrix_rep
+function matrix_representation(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}) :: SparseMatrixCSC{Complex{Float64}} where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}, SPO <: AbstractSPSSOperator{SPBasis{SPSSBS}}}
+    return calculate!(op, true)
 end
 
-# possibly recalculate the matrix representation
-function recalculate!(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}, recursive::Bool=true, basis_change::Bool=true) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}, SPO <: AbstractSPSSOperator{SPBasis{SPSSBS}}}
+# calculate the matrix representation
+function calculate!(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}, recursive::Bool=true, basis_change::Bool=true) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}, SPO <: AbstractSPSSOperator{SPBasis{SPSSBS}}}
     # maybe recursive
     if recursive
         # maybe change the basis of the SPSS operator
@@ -104,7 +100,7 @@ function recalculate!(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}, recursi
         recalculate!(operator.operator, recursive, basis_change)
     end
     # create new matrix
-    operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+    matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
     # get matrix representation of spss operator
     matrix_rep_ss = matrix_representation(operator.operator)
     # recalculate the matrix elements of the ms operator
@@ -114,9 +110,10 @@ function recalculate!(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}, recursi
         alpha = operator.indices_ss[a]
         beta  = operator.indices_ss[b]
         # set the respective entry
-        operator.matrix_rep[alpha, beta] = matrix_rep_ss[a,b]
+        matrix_rep[alpha, beta] = matrix_rep_ss[a,b]
     end
     end
+    return matrix_rep
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))
@@ -124,9 +121,6 @@ function set_parameter!(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}, param
     # pass on to containing operator
     if site == operator.site || site == :all
         found_param, changed_matrix = set_parameter!(operator.operator, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
-        if recalculate && changed_matrix
-            recalculate!(operator, false, false)
-        end
         return (found_param, changed_matrix)
     else
         if print_result
