@@ -8,8 +8,7 @@
 
 This object refers to the multisite description of a single particle local operator.
 
-It is characterized by the single particle multi site`basis::SPMSB` it refers to, the said single site operator `operator::SPO`, the site `site::Int64` it acts on, the basis `basis_ss   :: SPBasis{SPSSBS}` and its indices `indices_ss :: Vector{Int64}` in the multi site basis and
-its `matrix_rep :: Matrix{Complex{Float64}}`.
+It is characterized by the single particle multi site`basis::SPMSB` it refers to, the said single site operator `operator::SPO`, the site `site::Int64` it acts on, the basis `basis_ss   :: SPBasis{SPSSBS}` and its indices `indices_ss :: Vector{Int64}` in the multi site basis`.
 """
 mutable struct SPLocalMSOperator{
         SPSSBS <: AbstractSPSSBasisState,
