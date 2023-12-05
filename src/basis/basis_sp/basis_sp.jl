@@ -14,3 +14,6 @@ include("multi_site/multi_site_functions.jl")
 # include composite basis state definitions and functions
 include("composite_basisstate/single_site_composite_basisstate.jl")
 include("composite_basisstate/multi_site_composite_basisstate.jl")
+
+# include overlap definitions
+include("sp_overlaps.jl")
