@@ -242,3 +242,16 @@ function getMatrixElementLDotS(state_1::BasisStateLS, state_2::BasisStateLS, cf:
     ) * delta(state_1.l,state_2.l) * delta(state_1.s,state_2.s)
 end
 
+
+##############################################################
+#   Convenience functions for SS SP operators
+##############################################################
+
+
+# creating a spin orbit operator on a multi site basis
+function SpinOrbitOperator(basis::MPB, site::Int64, lambda::Real) where {SPSSBS<:AbstractSPSSBasisState, N,MPB<:MPBasis{N,SPMSBasisState{SPSSBS}}}
+    # construct new single site local operator
+    op = SpinOrbitOperator(basis.single_particle_basis, site, lambda)
+    # construct new multi particle operator out of that
+    return MPGeneralizedSPOperator(basis, op)
+end
