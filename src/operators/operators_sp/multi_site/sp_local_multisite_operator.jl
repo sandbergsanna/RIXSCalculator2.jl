@@ -69,35 +69,8 @@ end
 
 # obtain the matrix representation
 function matrix_representation(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}) :: SparseMatrixCSC{Complex{Float64}} where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}, SPO <: AbstractSPSSOperator{SPBasis{SPSSBS}}}
-    return calculate!(op, true)
-end
-
-# calculate the matrix representation
-function calculate!(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}, recursive::Bool=true, basis_change::Bool=true) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}, SPO <: AbstractSPSSOperator{SPBasis{SPSSBS}}}
-    # maybe recursive
-    if recursive
-        # maybe change the basis of the SPSS operator
-        if basis_change
-            # get the single site basis
-            operator.basis_ss = getSingleSiteBasis(basis(operator), operator.site)
-            # set the single site basis in the operator of the operator
-            operator.operator.basis = operator.basis_ss
-            # get the indices of single multisite states that belong to single site basis
-            #operator.indices_ss = Int64[i for i in 1:length(basis(operator)) if basis(operator)[i].site == operator.site]
-            operator.indices_ss = zeros(Int64, length(operator.basis_ss)) .- 1
-            for i in 1:length(operator.indices_ss)
-                # look for sp ss state i among the states
-                for j in 1:length(basis(operator))
-                    if basis(operator)[j].site == operator.site && basis(operator)[j].state == operator.basis_ss[i]
-                        operator.indices_ss[i] = j
-                        break
-                    end
-                end
-            end
-        end
-        # let operator recalculate
-        recalculate!(operator.operator, recursive, basis_change)
-    end
+    # recalculate single particle matrices
+    recalculate!(operator)
     # create new matrix
     matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
     # get matrix representation of spss operator
@@ -113,6 +86,31 @@ function calculate!(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}, recursive
     end
     end
     return matrix_rep
+end
+
+# calculate the matrix representation
+function recalculate!(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}, basis_change::Bool=true) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}, SPO <: AbstractSPSSOperator{SPBasis{SPSSBS}}}
+    # maybe change the basis of the SPSS operator
+    if basis_change
+        # get the single site basis
+        operator.basis_ss = getSingleSiteBasis(basis(operator), operator.site)
+        # set the single site basis in the operator of the operator
+        operator.operator.basis = operator.basis_ss
+        # get the indices of single multisite states that belong to single site basis
+        #operator.indices_ss = Int64[i for i in 1:length(basis(operator)) if basis(operator)[i].site == operator.site]
+        operator.indices_ss = zeros(Int64, length(operator.basis_ss)) .- 1
+        for i in 1:length(operator.indices_ss)
+            # look for sp ss state i among the states
+            for j in 1:length(basis(operator))
+                if basis(operator)[j].site == operator.site && basis(operator)[j].state == operator.basis_ss[i]
+                    operator.indices_ss[i] = j
+                    break
+                end
+            end
+        end
+    end
+    # let operator recalculate
+    recalculate!(operator.operator, basis_change)  
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))

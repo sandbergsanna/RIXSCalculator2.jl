@@ -77,24 +77,22 @@ return operator.matrix_rep
 end
 
 # possibly recalculate the matrix representation
-function recalculate!(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}, recursive::Bool=true, basis_change::Bool=true) where {
+function recalculate!(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}, basis_change::Bool=true) where {
         N,
         SPBS <: AbstractSPBasisState,
         MPB <: MPBasis{N,SPBS},
         SPO <: AbstractSPOperator{SPBasis{SPBS}}
     }
-# maybe calculate recursively
-if recursive
-    if basis_change
-        # reset the basis in the single particle operator
-        operator.operator.basis = operator.basis.single_particle_basis
-        # let operator recalculate
-        recalculate!(operator.operator, true, true)
-    else
-        # let operator recalculate
-        recalculate!(operator.operator, true, false)
-    end
+if basis_change
+    # reset the basis in the single particle operator
+    operator.operator.basis = operator.basis.single_particle_basis
+    # let operator recalculate
+    recalculate!(operator.operator, true)
+else
+    # let operator recalculate
+    recalculate!(operator.operator, false)
 end
+
 # get matrix representation
 matrix_rep_sp = matrix_representation(operator.operator)
 # get the important matrix elements

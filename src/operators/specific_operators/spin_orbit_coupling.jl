@@ -112,7 +112,7 @@ function matrix_representation(operator :: SpinOrbitOperator{SPB}) :: SparseMatr
 end
 
 # possibly recalculate the matrix representation
-function recalculate!(operator :: SpinOrbitOperator{SPB}, recursive::Bool=true, basis_change::Bool=true) where {SPSSBS<:BasisStateLS, SPB<:SPBasis{SPSSBS}}
+function recalculate!(operator :: SpinOrbitOperator{SPB}, basis_change::Bool=true) where {SPSSBS<:BasisStateLS, SPB<:SPBasis{SPSSBS}}
     # check if the size of matrix is still okay
     if size(operator.matrix_rep,1) == length(basis(operator)) && size(operator.matrix_rep,2) == length(basis(operator))
         # size is okay, multiply matrix by 0 to erase all elements
