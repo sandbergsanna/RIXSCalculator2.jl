@@ -20,6 +20,10 @@ include("specific_operators/spin_orbit_coupling.jl")
 # eigensystem of an operator
 include("operators_eigensystem.jl")
 
+# math functions for operators
+include("operator_math/operator_math.jl")
+
+
 
 
 
