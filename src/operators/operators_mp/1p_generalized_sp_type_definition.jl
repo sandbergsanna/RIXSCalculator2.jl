@@ -64,7 +64,7 @@ function basis(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}) :: MPB where
 return operator.basis
 end
 
-# ocalculate the matrix representation
+# calculate the matrix representation
 function matrix_representation(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}) :: SparseMatrixCSC{Complex{Float64}} where {
         N,
         SPBS <: AbstractSPBasisState,
