@@ -9,8 +9,6 @@ mutable struct MPGeneralizedSPOperator{
 basis :: MPB
 # the single particle operator
 operator :: SPO
-# the matrix representation
-matrix_rep :: Matrix{Complex{Float64}}
 
 # custom constructor
 function MPGeneralizedSPOperator(basis :: MPB, operator :: SPO) where {
@@ -20,7 +18,7 @@ function MPGeneralizedSPOperator(basis :: MPB, operator :: SPO) where {
             SPO <: AbstractSPOperator{SPBasis{SPBS}}
         }
     # create a new operator
-    op = new{SPBS, MPB, SPO}(basis, operator, zeros(length(basis), length(basis)))
+    op = new{SPBS, MPB, SPO}(basis, operator)
     # recalculate the matrix representation
     recalculate!(op)
     # return the operator
@@ -66,67 +64,69 @@ function basis(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}) :: MPB where
 return operator.basis
 end
 
-# obtain the matrix representation
-function matrix_representation(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}) :: Matrix{Complex{Float64}} where {
+# ocalculate the matrix representation
+function matrix_representation(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}) :: SparseMatrixCSC{Complex{Float64}} where {
         N,
         SPBS <: AbstractSPBasisState,
         MPB <: MPBasis{N,SPBS},
         SPO <: AbstractSPOperator{SPBasis{SPBS}}
     }
-return operator.matrix_rep
+    # recalculate single particle operator
+    recalculate!(operator)
+    # get matrix representation
+    matrix_rep_sp = matrix_representation(operator.operator)
+    # get the important matrix elements
+    relevant_sp = map(x->abs(x)>1e-8, matrix_rep_sp)
+    # create new matrix
+    matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+    # allocate a buffer state
+    state_buffer = deepcopy(basis(operator)[1])
+    state_buffer.basis_index = -1
+    state_buffer.basis_sign  = 0
+    # recalculate the own matrix elements
+    for a in 1:length(operator.basis.single_particle_basis)
+    for b in 1:length(operator.basis.single_particle_basis)
+        # check if relevant
+        if !relevant_sp[a,b]
+            continue
+        end
+        # get the element of the single particle hamiltonian
+        op_sp_ab = matrix_rep_sp[a,b]
+        # generate all element contributions to the many body hamiltonian
+        for alpha in basis(operator).lookup_sp_states[a]
+        for beta  in basis(operator).lookup_sp_states[b]
+            # add the expectation with ab to the matrix
+            #= exp_ca_2 = expectation_value_ca!(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta], state_buffer)
+            exp_ca_1 = expectation_value_ca(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta])
+            if abs(exp_ca_1 - exp_ca_2) > 1e-10
+                println("ERROR: <$(alpha)| $(a) $(b) |$(beta)> gives $(exp_ca_1) vs. $(exp_ca_2)")
+            end =#
+            matrix_rep[alpha, beta] += expectation_value_ca!(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta], state_buffer) * op_sp_ab
+            #operator.matrix_rep[alpha, beta] += expectation_value_ca(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta]) * op_sp_ab
+        end
+        end
+    end
+    end
+    #return matrix representation
+    return matrix_rep
 end
 
-# possibly recalculate the matrix representation
+# recalculate the matrix representation (for the single particle operators)
 function recalculate!(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}, basis_change::Bool=true) where {
         N,
         SPBS <: AbstractSPBasisState,
         MPB <: MPBasis{N,SPBS},
         SPO <: AbstractSPOperator{SPBasis{SPBS}}
     }
-if basis_change
-    # reset the basis in the single particle operator
-    operator.operator.basis = operator.basis.single_particle_basis
-    # let operator recalculate
-    recalculate!(operator.operator, true)
-else
-    # let operator recalculate
-    recalculate!(operator.operator, false)
-end
-
-# get matrix representation
-matrix_rep_sp = matrix_representation(operator.operator)
-# get the important matrix elements
-relevant_sp = map(x->abs(x)>1e-8, matrix_rep_sp)
-# create new matrix
-operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
-# allocate a buffer state
-state_buffer = deepcopy(basis(operator)[1])
-state_buffer.basis_index = -1
-state_buffer.basis_sign  = 0
-# recalculate the own matrix elements
-for a in 1:length(operator.basis.single_particle_basis)
-for b in 1:length(operator.basis.single_particle_basis)
-    # check if relevant
-    if !relevant_sp[a,b]
-        continue
+    if basis_change
+        # reset the basis in the single particle operator
+        operator.operator.basis = operator.basis.single_particle_basis
+        # let operator recalculate
+        recalculate!(operator.operator, true)
+    else
+        # let operator recalculate
+        recalculate!(operator.operator, false)
     end
-    # get the element of the single particle hamiltonian
-    op_sp_ab = matrix_rep_sp[a,b]
-    # generate all element contributions to the many body hamiltonian
-    for alpha in basis(operator).lookup_sp_states[a]
-    for beta  in basis(operator).lookup_sp_states[b]
-        # add the expectation with ab to the matrix
-        #= exp_ca_2 = expectation_value_ca!(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta], state_buffer)
-        exp_ca_1 = expectation_value_ca(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta])
-        if abs(exp_ca_1 - exp_ca_2) > 1e-10
-            println("ERROR: <$(alpha)| $(a) $(b) |$(beta)> gives $(exp_ca_1) vs. $(exp_ca_2)")
-        end =#
-        operator.matrix_rep[alpha, beta] += expectation_value_ca!(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta], state_buffer) * op_sp_ab
-        #operator.matrix_rep[alpha, beta] += expectation_value_ca(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta]) * op_sp_ab
-    end
-    end
-end
-end
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))
@@ -138,9 +138,7 @@ function set_parameter!(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}, par
     }
 # pass on to contained operator
 found_param, changed_matrix = set_parameter!(operator.operator, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
-if recalculate && changed_matrix
-    recalculate!(operator, false, false)
-end
+# return found parameter and changed matrix
 return (found_param, changed_matrix)
 end
 
