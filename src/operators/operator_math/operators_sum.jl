@@ -19,8 +19,6 @@ This object defines the sum operator.
 mutable struct SumOperator{B, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}} <: AbstractOperator{B}
     # the basis
     basis :: B
-    # the current matrix representation
-    matrix_rep :: Matrix{Complex{Float64}}
     # the two contained operators
     op_1 :: O1
     op_2 :: O2
@@ -30,7 +28,7 @@ mutable struct SumOperator{B, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}} 
         # check that they have the same basis
         @assert basis(op_1) == basis(op_2)
         # construct new operator
-        op = new{B, O1, O2}(basis(op_1), zeros(Complex{Float64}, length(basis(op_1)), length(basis(op_1))), op_1, op_2)
+        op = new{B, O1, O2}(basis(op_1), op_1, op_2)
         # recalculate the matrix representation
         recalculate!(op, false)
         # return the operator
@@ -89,20 +87,17 @@ function basis(operator :: SumOperator{B, O1, O2}) :: B where {BS<:AbstractBasis
     return operator.basis
 end
 
-# obtain the matrix representation
-function matrix_representation(operator :: SumOperator{B, O1, O2}) :: Matrix{Complex{Float64}} where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
-    return operator.matrix_rep
+# calculate the matrix representation
+function matrix_representation(operator :: SumOperator{B, O1, O2}) :: SparseMatrixCSC{Complex{Float64}} where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
+    # return sum of matrix representations
+    return matrix_representation(operator.op_1) .+ matrix_representation(operator.op_2)
 end
 
-# possibly recalculate the matrix representation
-function recalculate!(operator :: SumOperator{B, O1, O2}, recursive::Bool=true, basis_change::Bool=true)  where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
-    # maybe recalculate recursively
-    if recursive
-        recalculate!(operator.op_1, true, basis_change)
-        recalculate!(operator.op_2, true, basis_change)
-    end
-    # create new matrix
-    operator.matrix_rep = matrix_representation(operator.op_1) .+ matrix_representation(operator.op_2)
+# recalculate the matrix representation (forwards until single particle operators)
+function recalculate!(operator :: SumOperator{B, O1, O2}, basis_change::Bool=true)  where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
+    # recalculate single particle operators
+    recalculate!(operator.op_1, basis_change)
+    recalculate!(operator.op_2, basis_change)
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))
@@ -110,9 +105,7 @@ function set_parameter!(operator :: SumOperator{B, O1, O2}, parameter :: Symbol,
     # check if it can be set in 1
     found_param_1, changed_matrix_1 = set_parameter!(operator.op_1, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
     found_param_2, changed_matrix_2 = set_parameter!(operator.op_2, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
-    if recalculate && (changed_matrix_1 || changed_matrix_2)
-        recalculate!(operator, false, false)
-    end
+    # return found parameter and changed matrix
     return (found_param_1 || found_param_2, changed_matrix_1 || changed_matrix_2)
 end
 

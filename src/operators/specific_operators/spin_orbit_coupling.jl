@@ -26,7 +26,7 @@ This object refers to the Spin Orbit Operator.
 # Fields
 
 - `basis :: SPB`, the single particle basis;
-- `matrix_rep :: Matrix{Complex{Float64}}`, the matrix representation of the operator;
+- `matrix_rep :: SparseMatrixCSC{Complex{Float64}}`, the matrix representation of the operator;
 - `lambda :: Float64`, the coupling strength;
 - `spin_quantization :: CoordinateFrame`, the spin quantization axis.
 
