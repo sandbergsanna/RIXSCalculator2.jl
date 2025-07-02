@@ -11,7 +11,7 @@
 
 
 # start of module
-module RIXSCalculator_ver2
+module RIXSCalculator2.0
 
 
     # GENERAL USINGS
