@@ -13,3 +13,6 @@ include("mp_functions/functions.jl")
 # include overlap and matrix elements
 include("mp_overlaps.jl")
 include("mp_matrix_elements.jl")
+
+# include descriptor finding functions
+include("descriptor_finding/identify_mp_state.jl")
