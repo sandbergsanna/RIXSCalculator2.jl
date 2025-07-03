@@ -67,15 +67,13 @@ function basis(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}) :: SPMSB where
     return operator.basis
 end
 
-# obtain the matrix representation
+# calculate the matrix representation
 function matrix_representation(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}) :: SparseMatrixCSC{Complex{Float64}} where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}, SPO <: AbstractSPSSOperator{SPBasis{SPSSBS}}}
-    # recalculate single particle matrices
-    recalculate!(operator)
     # create new matrix
     matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
     # get matrix representation of spss operator
     matrix_rep_ss = matrix_representation(operator.operator)
-    # recalculate the matrix elements of the ms operator
+    # calculate the matrix elements of the ms operator
     for a in 1:length(operator.basis_ss)
     for b in 1:length(operator.basis_ss)
         # get alpha and beta
@@ -88,36 +86,11 @@ function matrix_representation(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}
     return matrix_rep
 end
 
-# calculate the matrix representation
-function recalculate!(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}, basis_change::Bool=true) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}, SPO <: AbstractSPSSOperator{SPBasis{SPSSBS}}}
-    # maybe change the basis of the SPSS operator
-    if basis_change
-        # get the single site basis
-        operator.basis_ss = getSingleSiteBasis(basis(operator), operator.site)
-        # set the single site basis in the operator of the operator
-        operator.operator.basis = operator.basis_ss
-        # get the indices of single multisite states that belong to single site basis
-        #operator.indices_ss = Int64[i for i in 1:length(basis(operator)) if basis(operator)[i].site == operator.site]
-        operator.indices_ss = zeros(Int64, length(operator.basis_ss)) .- 1
-        for i in 1:length(operator.indices_ss)
-            # look for sp ss state i among the states
-            for j in 1:length(basis(operator))
-                if basis(operator)[j].site == operator.site && basis(operator)[j].state == operator.basis_ss[i]
-                    operator.indices_ss[i] = j
-                    break
-                end
-            end
-        end
-    end
-    # let operator recalculate
-    recalculate!(operator.operator, basis_change)  
-end
-
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, site::Union{Int64, Symbol}=-1, kwargs...) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}, SPO <: AbstractSPSSOperator{SPBasis{SPSSBS}}}
+function set_parameter!(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}, parameter :: Symbol, value; print_result::Bool=false, site::Union{Int64, Symbol}=-1, kwargs...) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}, SPO <: AbstractSPSSOperator{SPBasis{SPSSBS}}}
     # pass on to containing operator
     if site == operator.site || site == :all
-        found_param, changed_matrix = set_parameter!(operator.operator, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
+        found_param, changed_matrix = set_parameter!(operator.operator, parameter, value, print_result=print_result; kwargs...)
         return (found_param, changed_matrix)
     else
         if print_result
