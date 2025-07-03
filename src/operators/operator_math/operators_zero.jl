@@ -11,19 +11,16 @@ This object defines the zero operator.
 
 # Fields
 - `basis :: B`, the basis;
-- `matrix_rep :: Matrix{Complex{Float64}}`, the matrix representation of the operator.
 
 """
 mutable struct ZeroOperator{B} <: AbstractOperator{B}
     # the basis
     basis :: B
-    # the current matrix representation
-    matrix_rep :: Matrix{Complex{Float64}}
 
     # Custom constructor (without explicit matrix rep)
     function ZeroOperator(b :: B) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}}
         # construct new operator
-        op = new{B}(b, zeros(Complex{Float64}, length(b), length(b)))
+        op = new{B}(b)
         # return the operator
         return op
     end
@@ -73,18 +70,12 @@ function basis(operator :: ZeroOperator{B}) :: B where {BS<:AbstractBasisState, 
 end
 
 # obtain the matrix representation
-function matrix_representation(operator :: ZeroOperator{B}) :: Matrix{Complex{Float64}} where {BS<:AbstractBasisState, B<:AbstractBasis{BS}}
-    return operator.matrix_rep
-end
-
-# possibly recalculate the matrix representation
-function recalculate!(operator :: ZeroOperator{B}, recursive::Bool=true, basis_change::Bool=true)  where {BS<:AbstractBasisState, B<:AbstractBasis{BS}}
-    # create new matrix
-    operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+function matrix_representation(operator :: ZeroOperator{B}) :: SparseMatrixCSC{Complex{Float64}} where {BS<:AbstractBasisState, B<:AbstractBasis{BS}}
+    return spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: ZeroOperator{B}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, kwargs...) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}}
+function set_parameter!(operator :: ZeroOperator{B}, parameter :: Symbol, value; print_result::Bool=false, kwargs...) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}}
     if print_result
         println("Parameter :$(parameter) not found")
     end
