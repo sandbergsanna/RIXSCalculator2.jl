@@ -19,8 +19,6 @@ function MPGeneralizedSPOperator(basis :: MPB, operator :: SPO) where {
         }
     # create a new operator
     op = new{SPBS, MPB, SPO}(basis, operator)
-    # recalculate the matrix representation
-    recalculate!(op)
     # return the operator
     return op
 end
@@ -71,8 +69,6 @@ function matrix_representation(operator :: MPGeneralizedSPOperator{SPBS, MPB, SP
         MPB <: MPBasis{N,SPBS},
         SPO <: AbstractSPOperator{SPBasis{SPBS}}
     }
-    # recalculate single particle operator
-    recalculate!(operator)
     # get matrix representation
     matrix_rep_sp = matrix_representation(operator.operator)
     # get the important matrix elements
@@ -83,7 +79,7 @@ function matrix_representation(operator :: MPGeneralizedSPOperator{SPBS, MPB, SP
     state_buffer = deepcopy(basis(operator)[1])
     state_buffer.basis_index = -1
     state_buffer.basis_sign  = 0
-    # recalculate the own matrix elements
+    # calculate the own matrix elements
     for a in 1:length(operator.basis.single_particle_basis)
     for b in 1:length(operator.basis.single_particle_basis)
         # check if relevant
@@ -111,33 +107,16 @@ function matrix_representation(operator :: MPGeneralizedSPOperator{SPBS, MPB, SP
     return matrix_rep
 end
 
-# recalculate the matrix representation (for the single particle operators)
-function recalculate!(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}, basis_change::Bool=true) where {
-        N,
-        SPBS <: AbstractSPBasisState,
-        MPB <: MPBasis{N,SPBS},
-        SPO <: AbstractSPOperator{SPBasis{SPBS}}
-    }
-    if basis_change
-        # reset the basis in the single particle operator
-        operator.operator.basis = operator.basis.single_particle_basis
-        # let operator recalculate
-        recalculate!(operator.operator, true)
-    else
-        # let operator recalculate
-        recalculate!(operator.operator, false)
-    end
-end
 
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}, parameter :: Symbol, value; print_result::Bool=true, recalculate::Bool=true, kwargs...) where {
+function set_parameter!(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}, parameter :: Symbol, value; print_result::Bool=true, kwargs...) where {
         N,
         SPBS <: AbstractSPBasisState,
         MPB <: MPBasis{N,SPBS},
         SPO <: AbstractSPOperator{SPBasis{SPBS}}
     }
 # pass on to contained operator
-found_param, changed_matrix = set_parameter!(operator.operator, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
+found_param, changed_matrix = set_parameter!(operator.operator, parameter, value, print_result=print_result; kwargs...)
 # return found parameter and changed matrix
 return (found_param, changed_matrix)
 end
