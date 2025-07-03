@@ -49,14 +49,14 @@ This function computes the matrix representation of the Spin Orbit Operator with
 """
 function SpinOrbitOperator(basis::SPB, lambda::Real) where {SPB<:SPBasis{BasisStateLS}}
     # construct new operator
-    op = SpinOrbitOperator{SPB}(basis, spzeros(Complex{Float64}, length(basis), length(basis)), lambda, CoordinateFrame())
+    op = SpinOrbitOperator{SPB}(basis, lambda, CoordinateFrame())
     # return the operator
     return op
 end
 function SpinOrbitOperator(basis::SPB, lambda::Real) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     # construct new operator
     basis_internal = getT2GBasisLS()
-    op = SpinOrbitOperator{SPBasis{BasisStateLS}}(basis_internal, spzeros(Complex{Float64}, length(basis_internal), length(basis_internal)), lambda, CoordinateFrame())
+    op = SpinOrbitOperator{SPBasis{BasisStateLS}}(basis_internal, lambda, CoordinateFrame())
     # build a projection operator around it
     op_proj = SPSSProjectorOperator(op, basis)
     # return the operator
