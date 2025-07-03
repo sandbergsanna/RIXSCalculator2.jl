@@ -91,10 +91,10 @@ function matrix_representation(operator :: SumOperator{B, O1, O2}) :: SparseMatr
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: SumOperator{B, O1, O2}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, kwargs...) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
+function set_parameter!(operator :: SumOperator{B, O1, O2}, parameter :: Symbol, value; print_result::Bool=false, kwargs...) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
     # check if it can be set in 1
-    found_param_1, changed_matrix_1 = set_parameter!(operator.op_1, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
-    found_param_2, changed_matrix_2 = set_parameter!(operator.op_2, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
+    found_param_1, changed_matrix_1 = set_parameter!(operator.op_1, parameter, value, print_result=print_result; kwargs...)
+    found_param_2, changed_matrix_2 = set_parameter!(operator.op_2, parameter, value, print_result=print_result; kwargs...)
     # return found parameter and changed matrix
     return (found_param_1 || found_param_2, changed_matrix_1 || changed_matrix_2)
 end
