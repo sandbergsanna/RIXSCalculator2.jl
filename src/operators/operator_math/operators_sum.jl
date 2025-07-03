@@ -12,7 +12,6 @@ This object defines the sum operator.
 # Fields
 
 - `basis :: B`, the basis;
-- `matrix_rep :: Matrix{Complex{Float64}}`, the matrix representation of operator;
 - `op_1 :: O1`, `op_2 :: O2`, the two contained operators.
 
 """
@@ -29,8 +28,6 @@ mutable struct SumOperator{B, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}} 
         @assert basis(op_1) == basis(op_2)
         # construct new operator
         op = new{B, O1, O2}(basis(op_1), op_1, op_2)
-        # recalculate the matrix representation
-        recalculate!(op, false)
         # return the operator
         return op
     end
@@ -91,13 +88,6 @@ end
 function matrix_representation(operator :: SumOperator{B, O1, O2}) :: SparseMatrixCSC{Complex{Float64}} where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
     # return sum of matrix representations
     return matrix_representation(operator.op_1) .+ matrix_representation(operator.op_2)
-end
-
-# recalculate the matrix representation (forwards until single particle operators)
-function recalculate!(operator :: SumOperator{B, O1, O2}, basis_change::Bool=true)  where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
-    # recalculate single particle operators
-    recalculate!(operator.op_1, basis_change)
-    recalculate!(operator.op_2, basis_change)
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))
