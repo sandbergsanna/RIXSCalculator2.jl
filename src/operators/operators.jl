@@ -22,6 +22,8 @@ include("specific_operators/spin_orbit_coupling.jl")
 include("specific_operators/magnetic_field.jl")
 include("specific_operators/crystal_field_distortion.jl")
 
+include("specific_operators/hopping.jl")
+
 
 # math functions for operators
 include("operator_math/operator_math.jl")
