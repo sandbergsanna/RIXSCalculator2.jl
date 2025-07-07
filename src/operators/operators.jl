@@ -16,12 +16,14 @@ include("operators_mp/operators_mp.jl")
 include("specific_operators/fundamental_operators.jl")
 
 include("specific_operators/spin_orbit_coupling.jl")
+include("specific_operators/crystal_field_distortion.jl")
 
-# eigensystem of an operator
-include("operators_eigensystem.jl")
 
 # math functions for operators
 include("operator_math/operator_math.jl")
+
+# eigensystem of an operator
+include("operators_eigensystem.jl")
 
 
 
