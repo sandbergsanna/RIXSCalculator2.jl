@@ -19,6 +19,7 @@ include("projector_operators/operators_projectors.jl")
 include("specific_operators/fundamental_operators.jl")
 
 include("specific_operators/spin_orbit_coupling.jl")
+include("specific_operators/magnetic_field.jl")
 include("specific_operators/crystal_field_distortion.jl")
 
 
