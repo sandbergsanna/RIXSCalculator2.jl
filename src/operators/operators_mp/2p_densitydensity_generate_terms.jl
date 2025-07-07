@@ -21,9 +21,6 @@ function generateDensityDensityElectronInteractionSameOrbital(basis :: MPB, site
     end
     end
 
-    # recalculate the operator
-    recalculate!(op)
-
     # return the finished operator
     return op
 end
@@ -52,9 +49,6 @@ function generateDensityDensityElectronInteractionSameSpin(basis :: MPB, site ::
     end
     end
 
-    # recalculate the operator
-    recalculate!(op)
-
     # return the finished operator
     return op
 end
@@ -82,9 +76,6 @@ function generateDensityDensityElectronInteractionRemainder(basis :: MPB, site :
         end
     end
     end
-
-    # recalculate the operator
-    recalculate!(op)
 
     # return the finished operator
     return op
@@ -116,9 +107,6 @@ function generateDensityDensityHoleInteractionSameOrbital(basis :: MPB, site :: 
     end
     end
 
-    # recalculate the operator
-    recalculate!(op)
-
     # return the finished operator
     return op
 end
@@ -147,9 +135,6 @@ function generateDensityDensityHoleInteractionSameSpin(basis :: MPB, site :: Int
     end
     end
 
-    # recalculate the operator
-    recalculate!(op)
-
     # return the finished operator
     return op
 end
@@ -177,9 +162,6 @@ function generateDensityDensityHoleInteractionRemainder(basis :: MPB, site :: In
         end
     end
     end
-
-    # recalculate the operator
-    recalculate!(op)
 
     # return the finished operator
     return op

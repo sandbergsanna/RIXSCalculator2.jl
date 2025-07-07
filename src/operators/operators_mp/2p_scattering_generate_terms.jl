@@ -33,9 +33,6 @@ function generate2PScatteringElectronInteractionSpinFlip(basis :: MPB, site :: I
     end
     end
 
-    # recalculate the operator
-    recalculate!(op)
-
     # return the finished operator
     return op
 end
@@ -75,9 +72,6 @@ function generate2PScatteringElectronInteractionSpinConserve(basis :: MPB, site 
         end
     end
     end
-
-    # recalculate the operator
-    recalculate!(op)
 
     # return the finished operator
     return op
@@ -119,9 +113,6 @@ function generate2PScatteringHoleInteractionSpinFlip(basis :: MPB, site :: Int64
     end
     end
 
-    # recalculate the operator
-    recalculate!(op)
-
     # return the finished operator
     return op
 end
@@ -162,9 +153,6 @@ function generate2PScatteringHoleInteractionSpinConserve(basis :: MPB, site :: I
         end
     end
     end
-
-    # recalculate the operator
-    recalculate!(op)
 
     # return the finished operator
     return op

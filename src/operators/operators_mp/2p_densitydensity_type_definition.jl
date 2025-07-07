@@ -10,8 +10,6 @@ mutable struct MPElectronDensityDensityOperator{
 
     # the MP basis
     basis :: MPB
-    # the matrix representation
-    matrix_rep :: Matrix{Complex{Float64}}
     # the list of interacting orbitals
     interacting_orbitals :: Vector{Tuple{Int64,Int64}}
     # the prefactor
@@ -23,9 +21,7 @@ mutable struct MPElectronDensityDensityOperator{
                 MPB <: MPBasis{N,SPBS}
             }
         # create a new operator
-        op = new{MPB}(basis, zeros(length(basis), length(basis)), interacting_orbitals, prefactor)
-        # recalculate the matrix representation
-        recalculate!(op)
+        op = new{MPB}(basis, interacting_orbitals, prefactor)
         # return the operator
         return op
     end
@@ -39,8 +35,6 @@ mutable struct MPHoleDensityDensityOperator{
 
     # the MP basis
     basis :: MPB
-    # the matrix representation
-    matrix_rep :: Matrix{Complex{Float64}}
     # the list of interacting orbitals
     interacting_orbitals :: Vector{Tuple{Int64,Int64}}
     # the prefactor
@@ -52,9 +46,7 @@ mutable struct MPHoleDensityDensityOperator{
                 MPB <: MPBasis{N,SPBS}
             }
         # create a new operator
-        op = new{MPB}(basis, zeros(length(basis), length(basis)), interacting_orbitals, prefactor)
-        # recalculate the matrix representation
-        recalculate!(op)
+        op = new{MPB}(basis, interacting_orbitals, prefactor)
         # return the operator
         return op
     end
@@ -118,38 +110,22 @@ function basis(operator :: MPDDOP) :: MPB where {
     return operator.basis
 end
 
-# obtain the matrix representation (ELECTRON & HOLE)
-function matrix_representation(operator :: MPDDOP) :: Matrix{Complex{Float64}} where {
-            N, SPBS <: AbstractSPBasisState,
-            MPB <: MPBasis{N,SPBS},
-            MPDDOP <: AbstractMPDensityDensityOperator{MPB}
-        }
-    return operator.matrix_rep .* operator.prefactor
-end
 
-
-# possibly recalculate the matrix representation (ELECTRON & HOLE) (Fallback for non XYZ)
-function recalculate!(operator :: MPDDOP, recursive::Bool=true, basis_change::Bool=true) where {
-            N, SPBS <: AbstractSPBasisState,
-            MPB <: MPBasis{N,SPBS},
-            MPDDOP <: AbstractMPDensityDensityOperator{MPB}
-        }
-    @error "currently only recalculation of density-density operator implemented for XYZ basis states, not basis states of type $(SPBS)" stacktrace()
-end
-
-# possibly recalculate the matrix representation (ELECTRON & HOLE)
-function recalculate!(operator :: MPDDOP, recursive::Bool=true, basis_change::Bool=true) where {
+# calculate the matrix representation (ELECTRON & HOLE)
+function matrix_representation(operator :: MPDDOP) :: SparseMatrixCSC{Complex{Float64}} where {
             N, SPBS <: Union{SPMSBasisState{BasisStateXYZ}, BasisStateXYZ},
             MPB <: MPBasis{N,SPBS},
             MPDDOP <: AbstractMPDensityDensityOperator{MPB}
-        }
+        } 
     # create new matrix
-    operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+    matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
     # generate all diagonal element contributions to the many body hamiltonian
     for alpha in 1:length(basis(operator))
         # add the expectation with ab to the matrix
-        operator.matrix_rep[alpha, alpha] = orbital_contribution(operator, basis(operator)[alpha])
+        matrix_rep[alpha, alpha] = orbital_contribution(operator, basis(operator)[alpha])
     end
+    # return matrix representation
+    return matrix_rep .* operator.prefactor
 end
 
 

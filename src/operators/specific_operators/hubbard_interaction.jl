@@ -30,7 +30,6 @@ The hamiltonian is defined as follows in the electron picture:
 
 # Fields
 - `basis :: MPB`, the multi-particle basis;
-- `matrix_rep :: Matrix{Complex{Float64}}`, the matrix representation of the operator;
 - `site :: Int64`, the site;
 - `u1 :: Float64`, `u2 :: Float64`, `jH :: Float64`, the parameters;
 - `op_den_den_same_orb  :: MPElectronDensityDensityOperator{MPB}`,
@@ -48,8 +47,6 @@ mutable struct MPElectronPerkinsWoelfleHamiltonian{
 
     # the MP basis
     basis :: MPB
-    # the matrix representation
-    matrix_rep :: Matrix{Complex{Float64}}
 
     # the site
     site :: Int64
@@ -80,9 +77,7 @@ mutable struct MPElectronPerkinsWoelfleHamiltonian{
         op_2p_sc_spin_cons   = generate2PScatteringElectronInteractionSpinConserve(basis, site, jH)
         op_2p_sc_spin_flip   = generate2PScatteringElectronInteractionSpinFlip(basis, site, -jH)
         # construct new operator with those suboperators
-        op = new{MPB}(basis, zeros(Complex{Float64}, length(basis),length(basis)), site, u1,u2,jH, op_den_den_same_orb, op_den_den_same_spin, op_den_den_remainder, op_2p_sc_spin_cons, op_2p_sc_spin_flip)
-        # let it recalculate
-        recalculate!(op, false)
+        op = new{MPB}(basis, site, u1,u2,jH, op_den_den_same_orb, op_den_den_same_spin, op_den_den_remainder, op_2p_sc_spin_cons, op_2p_sc_spin_flip)
         # return it
         return op
     end
@@ -99,7 +94,6 @@ This object defines the interaction Hamiltonian described in the Perkins-Sizyuk-
 
 # Fields
 - `basis :: MPB`, the multi-particle basis;
-- `matrix_rep :: Matrix{Complex{Float64}}`, the matrix representation of the operator;
 - `site :: Int64`, the site;
 - `u1 :: Float64`, `u2 :: Float64`, `jH :: Float64`, the parameters;
 - `op_den_den_same_orb  :: MPHoleDensityDensityOperator{MPB}`,
@@ -117,8 +111,6 @@ mutable struct MPHolePerkinsWoelfleHamiltonian{
 
     # the MP basis
     basis :: MPB
-    # the matrix representation
-    matrix_rep :: Matrix{Complex{Float64}}
 
     # the site
     site :: Int64
@@ -149,9 +141,7 @@ mutable struct MPHolePerkinsWoelfleHamiltonian{
         op_2p_sc_spin_cons   = generate2PScatteringHoleInteractionSpinConserve(basis, site, jH)
         op_2p_sc_spin_flip   = generate2PScatteringHoleInteractionSpinFlip(basis, site, -jH)
         # construct new operator with those suboperators
-        op = new{MPB}(basis, zeros(Complex{Float64}, length(basis),length(basis)), site, u1,u2,jH, op_den_den_same_orb, op_den_den_same_spin, op_den_den_remainder, op_2p_sc_spin_cons, op_2p_sc_spin_flip)
-        # let it recalculate
-        recalculate!(op, false)
+        op = new{MPB}(basis, site, u1,u2,jH, op_den_den_same_orb, op_den_den_same_spin, op_den_den_remainder, op_2p_sc_spin_cons, op_2p_sc_spin_flip)
         # return it
         return op
     end
@@ -225,27 +215,9 @@ function basis(operator :: MPIH) :: MPB where {
     return operator.basis
 end
 
-# obtain the matrix representation (ELECTRON & HOLE)
-function matrix_representation(operator :: MPIH) :: Matrix{Complex{Float64}} where {
-            N, SPBS <: AbstractSPBasisState,
-            MPB <: MPBasis{N,SPBS},
-            MPIH <: AbstractMPInteractionHamiltonian{2,MPB}
-        }
-    return operator.matrix_rep
-end
-
-
-# possibly recalculate the matrix representation (ELECTRON & HOLE) (Fallback for non XYZ)
-function recalculate!(operator :: MPIH, recursive::Bool=true) where {
-            N, SPBS <: AbstractSPBasisState,
-            MPB <: MPBasis{N,SPBS},
-            MPIH <: AbstractMPInteractionHamiltonian{2,MPB}
-        }
-    @error "currently only recalculation of density-density operator implemented for XYZ basis states, not basis states of type $(SPBS)" stacktrace()
-end
 
 # possibly recalculate the matrix representation (ELECTRON & HOLE)
-function recalculate!(operator :: MPIH, recursive::Bool=true, basis_change::Bool=true) where {
+function matrix_representation(operator :: MPIH) :: SparseMatrixCSC{Complex{Float64}} where {
             N, SPBS <: Union{SPMSBasisState{BasisStateXYZ}, BasisStateXYZ},
             MPB <: MPBasis{N,SPBS},
             MPIH <: AbstractMPInteractionHamiltonian{2,MPB}
@@ -256,23 +228,15 @@ function recalculate!(operator :: MPIH, recursive::Bool=true, basis_change::Bool
     operator.op_den_den_remainder.prefactor = operator.u2
     operator.op_2p_sc_spin_cons.prefactor   = operator.jH
     operator.op_2p_sc_spin_flip.prefactor   = -operator.jH
-    # maybe recalculate recursively
-    if recursive
-        recalculate!(operator.op_den_den_same_orb)
-        recalculate!(operator.op_den_den_same_spin)
-        recalculate!(operator.op_den_den_remainder)
-        recalculate!(operator.op_2p_sc_spin_cons)
-        recalculate!(operator.op_2p_sc_spin_flip)
-    end
     # create new matrix by summing all contributions of suboperators
-    operator.matrix_rep =
+    matrix_rep =
         matrix_representation(operator.op_den_den_same_orb)  .+
         matrix_representation(operator.op_den_den_same_spin) .+
         matrix_representation(operator.op_den_den_remainder) .+
         matrix_representation(operator.op_2p_sc_spin_cons)   .+
         matrix_representation(operator.op_2p_sc_spin_flip)
-    # return nothing
-    return nothing
+    # return matrix represenatiation
+    return matrix_rep
 end
 
 
@@ -288,8 +252,6 @@ function set_parameter_ujH(operator :: MPIH, u::Real, jH::Real) where {
     operator.jH = jH
     operator.u1 = u
     operator.u2 = u-2jH
-    # recalculate, but not recursive
-    recalculate!(operator, true)
 end
 # setting interaction parameter (U1, U2, J_H)
 function set_parameter_u1u2jH(operator :: MPIH, u1::Real, u2::Real, jH::Real) where {
@@ -301,14 +263,12 @@ function set_parameter_u1u2jH(operator :: MPIH, u1::Real, u2::Real, jH::Real) wh
     operator.jH = jH
     operator.u1 = u1
     operator.u2 = u2
-    # recalculate, but not recursive
-    recalculate!(operator, true)
 end
 
 
 
 # set parameter interface (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: MPIH, parameter :: Symbol, value; print_result::Bool=true, recalculate::Bool=true, site::Union{Int64, Symbol}=-1, kwargs...) where {
+function set_parameter!(operator :: MPIH, parameter :: Symbol, value; print_result::Bool=true, site::Union{Int64, Symbol}=-1, kwargs...) where {
             N, SPBS <: Union{SPMSBasisState{BasisStateXYZ}, BasisStateXYZ},
             MPB <: MPBasis{N,SPBS},
             MPIH <: AbstractMPInteractionHamiltonian{2,MPB}
@@ -317,60 +277,33 @@ function set_parameter!(operator :: MPIH, parameter :: Symbol, value; print_resu
     if site == operator.site || site == :all
         # check which parameter is adressed
         if parameter == :U
-            if recalculate && (operator.u1 != value || operator.u2 != operator.u1-2*operator.jH)
-                operator.u1 = value
-                operator.u2 = operator.u1-2*operator.jH
-                recalculate!(operator, true, false)
-            else
-                operator.u1 = value
-                operator.u2 = operator.u1-2*operator.jH
-            end
+            operator.u1 = value
+            operator.u2 = operator.u1-2*operator.jH
             if print_result
                 println("Parameter :$(parameter) found and (u1,u2) set to values ($(operator.u1),$(operator.u2))")
             end
             return (true, true)
         elseif parameter == :U1
-            if recalculate && operator.u1 != value
-                operator.u1 = value
-                recalculate!(operator, true, false)
-            else
-                operator.u1 = value
-            end
+            operator.u1 = value
             if print_result
                 println("Parameter :$(parameter) found and u1 set to value $(operator.u1)")
             end
             return (true, true)
         elseif parameter == :U2
-            if recalculate && operator.u2 != value
-                operator.u2 = value
-                recalculate!(operator, true, false)
-            else
-                operator.u2 = value
-            end
+            operator.u2 = value
             if print_result
                 println("Parameter :$(parameter) found and u2 set to value $(operator.u2)")
             end
             return (true, true)
         elseif parameter == :J_H
             if operator.u2 != operator.u1-2*operator.jH
-                if recalculate && operator.jH != value
-                    operator.jH = value
-                    recalculate!(operator, true, false)
-                else
-                    operator.jH = value
-                end
+                operator.jH = value
                 if print_result
                     println("Parameter :$(parameter) found and jH set to value $(operator.jH)")
                 end
             else
-                if recalculate && (operator.jH != value || operator.u2 != operator.u1-2*operator.jH)
-                    operator.jH = value
-                    operator.u2 = operator.u1-2*operator.jH
-                    recalculate!(operator, true, false)
-                else
-                    operator.jH = value
-                    operator.u2 = operator.u1-2*operator.jH
-                end
+                operator.jH = value
+                operator.u2 = operator.u1-2*operator.jH
                 if print_result
                     println("Parameter :$(parameter) found and (u2,jH) set to values ($(operator.u2),$(operator.jH))")
                 end

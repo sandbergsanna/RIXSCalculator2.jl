@@ -52,3 +52,33 @@ function expectation_value_ca!(basis :: MPBasis{N,SPBS}, state_1 :: MPBasisState
     return overlap(basis, state_1, state_buffer)
 end
 export expectation_value_ca!
+
+
+#######################
+#  <B|c^d c c^d c|K>  #
+#######################
+
+# <state1| c_a^dagger c_b  c_c^dagger c_d |state2>
+# creation annihilation
+"""
+    expectation_value_caca(basis :: MPBasis{N,SPBS}, state_1 :: MPBasisState{N}, a::Int64, b::Int64, c::Int64, d::Int64, state_2 :: MPBasisState{N}) :: Complex{Float64} where {N,SPBS<:AbstractSPBasisState}
+
+This function computes the element `` \\left< state_1 \\left| c_a^\\dagger c_b c_c^\\dagger c_d \\right| state_2 \\right> ``, including the buffer state.
+"""
+function expectation_value_caca(basis :: MPBasis{N,SPBS}, state_1 :: MPBasisState{N}, a::Int64, b::Int64, c::Int64, d::Int64, state_2 :: MPBasisState{N}) :: Complex{Float64} where {N,SPBS<:AbstractSPBasisState}
+    # check all elements of state 2 explicitly
+    if b == c && d in state_2.occupation
+        # build a new state
+        s2 = MPBasisState{N}(replace(state_2.occupation, d=>a))
+        return overlap(basis, state_1, s2)
+    elseif d in state_2.occupation && b in state_2.occupation
+        # build a new state
+        s2 = MPBasisState{N}(replace(state_2.occupation, d=>c, b=>a))
+        return overlap(basis, state_1, s2)
+    else
+        # otherwise, return 0
+        return 0.0 + 0.0im
+    end
+end
+export expectation_value_caca
+

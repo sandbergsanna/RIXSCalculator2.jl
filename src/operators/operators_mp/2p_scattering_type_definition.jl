@@ -10,8 +10,6 @@ mutable struct MPElectron2PScatteringOperator{
 
     # the MP basis
     basis :: MPB
-    # the matrix representation
-    matrix_rep :: Matrix{Complex{Float64}}
     # the list of interacting orbitals ((a,b),(c,d))
     # meaning: b->a, d->c scattering
     interacting_orbitals :: Vector{Tuple{Tuple{Int64,Int64},Tuple{Int64,Int64}}}
@@ -24,9 +22,7 @@ mutable struct MPElectron2PScatteringOperator{
                 MPB <: MPBasis{N,SPBS}
             }
         # create a new operator
-        op = new{MPB}(basis, zeros(length(basis), length(basis)), interacting_orbitals, prefactor)
-        # recalculate the matrix representation
-        recalculate!(op)
+        op = new{MPB}(basis, interacting_orbitals, prefactor)
         # return the operator
         return op
     end
@@ -40,8 +36,6 @@ mutable struct MPHole2PScatteringOperator{
 
     # the MP basis
     basis :: MPB
-    # the matrix representation
-    matrix_rep :: Matrix{Complex{Float64}}
     # the list of interacting orbitals ((a,b),(c,d))
     # meaning: b->a, d->c scattering
     interacting_orbitals :: Vector{Tuple{Tuple{Int64,Int64},Tuple{Int64,Int64}}}
@@ -54,9 +48,7 @@ mutable struct MPHole2PScatteringOperator{
                 MPB <: MPBasis{N,SPBS}
             }
         # create a new operator
-        op = new{MPB}(basis, zeros(length(basis), length(basis)), interacting_orbitals, prefactor)
-        # recalculate the matrix representation
-        recalculate!(op)
+        op = new{MPB}(basis, interacting_orbitals, prefactor)
         # return the operator
         return op
     end
@@ -123,43 +115,26 @@ function basis(operator :: MPDDOP) :: MPB where {
     return operator.basis
 end
 
-# obtain the matrix representation (ELECTRON & HOLE)
-function matrix_representation(operator :: MPDDOP) :: Matrix{Complex{Float64}} where {
-            N, SPBS <: AbstractSPBasisState,
-            MPB <: MPBasis{N,SPBS},
-            MPDDOP <: AbstractMP2PScatteringOperator{MPB}
-        }
-    return operator.matrix_rep .* operator.prefactor
-end
-
-
-# possibly recalculate the matrix representation (ELECTRON & HOLE) (Fallback for non XYZ)
-function recalculate!(operator :: MPDDOP, recursive::Bool=true, basis_change::Bool=true) where {
-            N, SPBS <: AbstractSPBasisState,
-            MPB <: MPBasis{N,SPBS},
-            MPDDOP <: AbstractMP2PScatteringOperator{MPB}
-        }
-    @error "currently only recalculation of density-density operator implemented for XYZ basis states, not basis states of type $(SPBS)" stacktrace()
-end
-
-# possibly recalculate the matrix representation (ELECTRON & HOLE)
-function recalculate!(operator :: MPDDOP, recursive::Bool=true, basis_change::Bool=true) where {
+# calculate the matrix representation (ELECTRON & HOLE)
+function matrix_representation(operator :: MPDDOP) :: SparseMatrixCSC{Complex{Float64}} where {
             N, SPBS <: Union{SPMSBasisState{BasisStateXYZ}, BasisStateXYZ},
             MPB <: MPBasis{N,SPBS},
             MPDDOP <: AbstractMP2PScatteringOperator{MPB}
         }
     # create new matrix
-    operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+    matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
     # iterate over all interacting orbitals
     for orb in operator.interacting_orbitals
         # let it fill its contribution
-        fill_orbital_contribution!(operator, orb[1], orb[2])
+        matrix_rep=fill_orbital_contribution!(operator,matrix_rep, orb[1], orb[2])
     end
+    # return matrix representation
+    return matrix_rep .* operator.prefactor
 end
 
 
 # contribution of one orbital (ELEKTRON)
-function fill_orbital_contribution!(operator :: MPElectron2PScatteringOperator{MPB}, scattering_1::Tuple{Int64,Int64}, scattering_2::Tuple{Int64,Int64}) where {
+function fill_orbital_contribution!(operator :: MPElectron2PScatteringOperator{MPB}, matrix_rep:: SparseMatrixCSC{Complex{Float64}},scattering_1::Tuple{Int64,Int64}, scattering_2::Tuple{Int64,Int64}) :: SparseMatrixCSC{Complex{Float64}} where {
             N, SPBS <: AbstractSPBasisState,
             MPB <: MPBasis{N,SPBS}
         }
@@ -167,7 +142,7 @@ function fill_orbital_contribution!(operator :: MPElectron2PScatteringOperator{M
     for alpha in basis(operator).lookup_sp_states[scattering_1[1]]
     for beta  in basis(operator).lookup_sp_states[scattering_2[2]]
         # fill matrix entry naively
-        operator.matrix_rep[alpha, beta] += expectation_value_caca(
+        matrix_rep[alpha, beta] += expectation_value_caca(
             basis(operator),
             basis(operator)[alpha],
             scattering_1[1], scattering_1[2], scattering_2[1], scattering_2[2],
@@ -175,10 +150,12 @@ function fill_orbital_contribution!(operator :: MPElectron2PScatteringOperator{M
         )
     end
     end
+    # return matrix rep
+    return matrix_rep
 end
 
 # contribution of one orbital (HOLE)
-function fill_orbital_contribution!(operator :: MPHole2PScatteringOperator{MPB}, scattering_1::Tuple{Int64,Int64}, scattering_2::Tuple{Int64,Int64}) where {
+function fill_orbital_contribution!(operator :: MPHole2PScatteringOperator{MPB}, matrix_rep:: SparseMatrixCSC{Complex{Float64}}, scattering_1::Tuple{Int64,Int64}, scattering_2::Tuple{Int64,Int64}) :: SparseMatrixCSC{Complex{Float64}} where {
             N, SPBS <: AbstractSPBasisState,
             MPB <: MPBasis{N,SPBS}
         }
@@ -186,7 +163,7 @@ function fill_orbital_contribution!(operator :: MPHole2PScatteringOperator{MPB},
     for alpha in basis(operator).lookup_sp_states[scattering_2[2]]
     for beta  in basis(operator).lookup_sp_states[scattering_1[1]]
         # fill matrix entry naively
-        operator.matrix_rep[alpha, beta] += expectation_value_caca(
+        matrix_rep[alpha, beta] += expectation_value_caca(
             basis(operator),
             basis(operator)[alpha],
             scattering_1[2], scattering_1[1], scattering_2[2], scattering_2[1],
@@ -194,6 +171,8 @@ function fill_orbital_contribution!(operator :: MPHole2PScatteringOperator{MPB},
         )
     end
     end
+    # return matrix rep
+    return matrix_rep
 end
 
 
