@@ -12,6 +12,9 @@ include("operators_sp/operators_sp.jl")
 # multi particle operators
 include("operators_mp/operators_mp.jl")
 
+# projectors
+include("projector_operators/operators_projectors.jl")
+
 # specific operators
 include("specific_operators/fundamental_operators.jl")
 
