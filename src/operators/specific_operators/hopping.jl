@@ -23,7 +23,6 @@ The object defines the single particle orbital hopping operator.
 - `basis :: SPMSB`, the single-particle multi-site basis;
 - `hopping_processes :: Vector{Tuple{Int64, Int64, Symbol}}`, the list of hopping orbitals;
 - `hopping_strengths :: Dict{Symbol, Complex{Float64}}`, the hopping strengths;
-- `matrix_rep :: Matrix{Complex{Float64}}`, the matrix representation.
 """
 mutable struct SPOrbitalHoppingOperator{
         SPMSB <: SPBasis{SPMSBS} where {SPMSBS<:SPMSBasisState{SPSSBS} where SPSSBS <: AbstractSPSSBasisState}
@@ -36,15 +35,10 @@ mutable struct SPOrbitalHoppingOperator{
     hopping_processes :: Vector{Tuple{Int64, Int64, Symbol}}
     hopping_strengths :: Dict{Symbol, Complex{Float64}}
 
-    # the matrix representation
-    matrix_rep :: Matrix{Complex{Float64}}
-
     # custom constructor
     function SPOrbitalHoppingOperator(basis :: SPMSB) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}}
         # create a new operator
-        op = new{SPMSB}(basis, Tuple{Int64, Int64, Symbol}[], Dict{Symbol, Complex{Float64}}(), zeros(Complex{Float64}, length(basis), length(basis)))
-        # recalculate the matrix representation
-        recalculate!(op)
+        op = new{SPMSB}(basis, Tuple{Int64, Int64, Symbol}[], Dict{Symbol, Complex{Float64}}())
         # return the operator
         return op
     end
@@ -93,27 +87,24 @@ function basis(operator :: SPOrbitalHoppingOperator{SPMSB}) :: SPMSB where {SPSS
     return operator.basis
 end
 
-# obtain the matrix representation
-function matrix_representation(operator :: SPOrbitalHoppingOperator{SPMSB}) :: Matrix{Complex{Float64}} where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}}
-    return operator.matrix_rep
-end
-
-# possibly recalculate the matrix representation
-function recalculate!(operator :: SPOrbitalHoppingOperator{SPMSB}, recursive::Bool=true, basis_change::Bool=true) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}}
+# calculate the matrix representation
+function matrix_representation(operator :: SPOrbitalHoppingOperator{SPMSB}) :: SparseMatrixCSC{Complex{Float64}} where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}}
     # create new matrix
-    operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
-    # recalculate the matrix elements
+    matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+    # calculate the matrix elements
     for h in operator.hopping_processes
         # obtain the strength
         t = operator.hopping_strengths[h[3]] :: Complex{Float64}
         # set the respective entries of the matrix
-        operator.matrix_rep[h[2], h[1]] += t
-        operator.matrix_rep[h[1], h[2]] += conj(t)
+        matrix_rep[h[2], h[1]] += t
+        matrix_rep[h[1], h[2]] += conj(t)
     end
+    # return matrix representation
+    return matrix_rep
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: SPOrbitalHoppingOperator{SPMSB}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, site::Union{Int64, Symbol}=-1, kwargs...) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}}
+function set_parameter!(operator :: SPOrbitalHoppingOperator{SPMSB}, parameter :: Symbol, value; print_result::Bool=false, site::Union{Int64, Symbol}=-1, kwargs...) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}}
     if parameter in keys(operator.hopping_strengths)
         if operator.hopping_strengths[parameter] == value
             if print_result
@@ -122,15 +113,8 @@ function set_parameter!(operator :: SPOrbitalHoppingOperator{SPMSB}, parameter :
             return (true, false)
         else
             operator.hopping_strengths[parameter] = value
-            if recalculate
-                recalculate!(operator, false, false)
-                if print_result
-                    println("Parameter :$(parameter) found, value changed to $(value), also operator recalculated")
-                end
-            else
-                if print_result
-                    println("Parameter :$(parameter) found, value changed to $(value)")
-                end
+            if print_result
+                println("Parameter :$(parameter) found, value changed to $(value)")
             end
             return (true, true)
         end
