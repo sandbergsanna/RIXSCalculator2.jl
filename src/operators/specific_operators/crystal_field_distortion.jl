@@ -25,15 +25,12 @@ This object refers to the Crystal Distortion Operator.
 
 # Fields
 - `basis::SPB`, the single particle basis it refers to;
-- `matrix_rep :: Matrix{Complex{Float64}}`, its matrix representation;
 - `Delta :: Float64`, the distortion strength;
 - `n :: Vector{Float64}`, the (normalized) distortion direction.
 """
 mutable struct DistortionOperator{SPB} <: AbstractSPSSOperator{SPB}
     # the basis
     basis :: SPB
-    # the current matrix representation (without prefactor)
-    matrix_rep :: Matrix{Complex{Float64}}
     # the distortion strength
     Delta :: Float64
     # the distortion direction (normalized)
@@ -53,9 +50,7 @@ This function computes the matrix representation of the Crystal Distortion Opera
 function DistortionOperator(basis::SPB, Delta::Real, n::Vector{<:Real}=[0,0,1]) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     # construct new default basis
     basis_internal = getT2GBasisLS()
-    op = DistortionOperator{SPBasis{BasisStateLS}}(basis_internal, zeros(Complex{Float64}, length(basis_internal), length(basis_internal)), Delta, n./norm(n))
-    # recalculate the matrix representation
-    recalculate!(op)
+    op = DistortionOperator{SPBasis{BasisStateLS}}(basis_internal, Delta, n./norm(n))
     # build a projection operator around it
     op_proj = SPSSProjectorOperator(op, basis)
     # return the operator
@@ -63,9 +58,7 @@ function DistortionOperator(basis::SPB, Delta::Real, n::Vector{<:Real}=[0,0,1]) 
 end
 function DistortionOperator(basis::SPB, Delta::Real, n::Vector{<:Real}=[0,0,1]) where {SPB<:SPBasis{BasisStateLS}}
     # construct new operator
-    op = DistortionOperator{SPB}(basis, zeros(Complex{Float64}, length(basis), length(basis)), Delta, n./norm(n))
-    # recalculate the matrix representation
-    recalculate!(op)
+    op = DistortionOperator{SPB}(basis, Delta, n./norm(n))
     # return the operator
     return op
 end
@@ -109,45 +102,31 @@ function basis(operator :: DistortionOperator{SPB}) :: SPB where {SPSSBS<:Abstra
     return operator.basis
 end
 
-# obtain the matrix representation
-function matrix_representation(operator :: DistortionOperator{SPB}) :: Matrix{Complex{Float64}} where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
-    return operator.matrix_rep .* operator.Delta
-end
-
-# possibly recalculate the matrix representation
-function recalculate!(operator :: DistortionOperator{SPB}, recursive::Bool=true, basis_change::Bool=true) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
-    # check if the size of matrix is still okay
-    if size(operator.matrix_rep,1) == length(basis(operator)) && size(operator.matrix_rep,2) == length(basis(operator))
-        # size is okay, multiply matrix by 0 to erase all elements
-        operator.matrix_rep .*= 0.0
-    else
-        # create new matrix
-        operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
-    end
-    # recalculate the matrix elements
+# calculate the matrix representation
+function matrix_representation(operator :: DistortionOperator{SPB}) :: SparseMatrixCSC{Complex{Float64}}  where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
+    # create new matrix
+    matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+    # calculate the matrix elements
     for alpha in 1:length(basis(operator))
     for beta in 1:length(basis(operator))
         # set the respective entry
-        operator.matrix_rep[alpha, beta] = getMatrixElementLDotnSquared(basis(operator), basis(operator)[alpha], basis(operator)[beta], operator.n)
+        matrix_rep[alpha, beta] = getMatrixElementLDotnSquared(basis(operator), basis(operator)[alpha], basis(operator)[beta], operator.n)
     end
     end
-    # balance operator by subtracting (sum(energies)/num_of_states)*identity_operator
-    operator.matrix_rep -= (sum(eigvals(operator.matrix_rep))/length(basis(operator)))*I
+    # balance operator by subtracting (2/3)*identity_operator
+    matrix_rep -= (2/3)*I
+    # return matrix multiplied by Delta
+    return matrix_rep .* operator.Delta
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: DistortionOperator{SPB}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, kwargs...) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
+function set_parameter!(operator :: DistortionOperator{SPB}, parameter :: Symbol, value; print_result::Bool=false, kwargs...) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     # check if parameter can be set
     if parameter == :n
         # check if it is only strenth or if it includes direction
         if typeof(value) <: Vector{<:Real}
             # includes direction
-            if recalculate && operator.n != value ./ norm(value)
-                operator.n = value ./ norm(value)
-                recalculate!(operator)
-            else
-                operator.n = value ./ norm(value)
-            end
+            operator.n = value ./ norm(value)
             # print
             if print_result
                 println("Parameter :$(parameter) found and set to value $(operator.n)")
@@ -160,12 +139,7 @@ function set_parameter!(operator :: DistortionOperator{SPB}, parameter :: Symbol
         return (true, true)
     elseif parameter == :Delta
         # includes Prefactor
-        if recalculate && operator.Delta != value
-            operator.Delta = value
-            recalculate!(operator)
-        else
-            operator.Delta = value
-        end
+        operator.Delta = value
         # print
         if print_result
             println("Parameter :$(parameter) found and set to value $(value)")
