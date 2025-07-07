@@ -6,7 +6,7 @@
     projector_matrix(
         basis_to   :: B1,
         basis_from :: B2
-    ) :: Matrix{Complex{Float64}} where {BS1<:AbstractSPBasisState, BS2<:AbstractSPBasisState, B1 <: AbstractBasis{BS1}, B2 <: AbstractBasis{BS2}}
+    ) :: SparseMatrixCSC{Complex{Float64}} where {BS1<:AbstractSPBasisState, BS2<:AbstractSPBasisState, B1 <: AbstractBasis{BS1}, B2 <: AbstractBasis{BS2}}
 
 This function computes the matrix projector P, defined as:
 
@@ -15,9 +15,9 @@ This function computes the matrix projector P, defined as:
 function projector_matrix(
             basis_to   :: B1,
             basis_from :: B2
-        ) :: Matrix{Complex{Float64}} where {BS1<:AbstractSPBasisState, BS2<:AbstractSPBasisState, B1 <: AbstractBasis{BS1}, B2 <: AbstractBasis{BS2}}
+        ) :: SparseMatrixCSC{Complex{Float64}} where {BS1<:AbstractSPBasisState, BS2<:AbstractSPBasisState, B1 <: AbstractBasis{BS1}, B2 <: AbstractBasis{BS2}}
     # create new matrix
-    matrix = zeros(Complex{Float64}, length(basis_to),length(basis_from))
+    matrix = spzeros(Complex{Float64}, length(basis_to),length(basis_from))
     # fill the matrix
     for i in 1:length(basis_to)
     for j in 1:length(basis_from)
@@ -36,9 +36,9 @@ export projector_matrix
 function projector_matrix(
             basis_to   :: B1,
             basis_from :: B2
-        ) :: Matrix{Complex{Float64}} where {N,SPBS1<:AbstractSPBasisState,SPBS2<:AbstractSPBasisState, B1 <: MPBasis{N,SPBS1}, B2 <: MPBasis{N,SPBS2}}
+        ) :: SparseMatrixCSC{Complex{Float64}} where {N,SPBS1<:AbstractSPBasisState,SPBS2<:AbstractSPBasisState, B1 <: MPBasis{N,SPBS1}, B2 <: MPBasis{N,SPBS2}}
     # create new matrix
-    matrix = zeros(Complex{Float64}, length(basis_to),length(basis_from))
+    matrix = spzeros(Complex{Float64}, length(basis_to),length(basis_from))
     # fill the matrix
     for i in 1:length(basis_to)
     for j in 1:length(basis_from)
