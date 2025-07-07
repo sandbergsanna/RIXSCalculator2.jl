@@ -24,6 +24,8 @@ include("specific_operators/crystal_field_distortion.jl")
 
 include("specific_operators/hopping.jl")
 
+include("specific_operators/hubbard_interaction.jl")
+
 
 # math functions for operators
 include("operator_math/operator_math.jl")
