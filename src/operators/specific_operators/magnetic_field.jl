@@ -26,7 +26,6 @@ This object refers to the Magnetic Field Operator.
 # Fields
 
 - `basis :: SPB`, the single particle basis;
-- `matrix_rep :: Matrix{Complex{Float64}}`, the matrix representation of the operator;
 - `B :: Float64`, the magnetic field strength;
 - `B_dir :: Vector{Float64}`, the field direction (normalized);
 - `spin_quantization :: CoordinateFrame`, the spin quantization axis.
@@ -35,8 +34,6 @@ This object refers to the Magnetic Field Operator.
 mutable struct MagneticFieldOperator{SPB} <: AbstractSPSSOperator{SPB}
     # the basis
     basis :: SPB
-    # the current matrix representation (without prefactor)
-    matrix_rep :: Matrix{Complex{Float64}}
     # the field strength
     B :: Float64
     # the field direction (normalized)
@@ -54,9 +51,7 @@ This function computes the matrix representation of the Magnetic Field Operator 
 function MagneticFieldOperator(basis::SPB, B::Vector{<:Real}) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     # construct new operator
     basis_internal = getT2GBasisLS()
-    op = MagneticFieldOperator{SPBasis{BasisStateLS}}(basis_internal, zeros(Complex{Float64}, length(basis_internal), length(basis_internal)), norm(B), B./norm(B), CoordinateFrame())
-    # recalculate the matrix representation
-    recalculate!(op)
+    op = MagneticFieldOperator{SPBasis{BasisStateLS}}(basis_internal, norm(B), B./norm(B), CoordinateFrame())
     # build a projection operator around it
     op_proj = SPSSProjectorOperator(op, basis)
     # return the operator
@@ -66,9 +61,7 @@ end
 function MagneticFieldOperator(basis::SPB, B::Real, B_dir::Vector{<:Real}=[0,0,1]) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     # construct new operator
     basis_internal = getT2GBasisLS()
-    op = MagneticFieldOperator{SPBasis{BasisStateLS}}(basis_internal, zeros(Complex{Float64}, length(basis_internal), length(basis_internal)), B, B_dir./norm(B_dir), CoordinateFrame())
-    # recalculate the matrix representation
-    recalculate!(op)
+    op = MagneticFieldOperator{SPBasis{BasisStateLS}}(basis_internal, B, B_dir./norm(B_dir), CoordinateFrame())
     # build a projection operator around it
     op_proj = SPSSProjectorOperator(op, basis)
     # return the operator
@@ -80,18 +73,14 @@ end
 # Custom constructor (without explicit matrix rep)
 function MagneticFieldOperator(basis::SPB, B::Vector{<:Real}) where {SPB<:SPBasis{BasisStateLS}}
     # construct new operator
-    op = MagneticFieldOperator{SPB}(basis, zeros(Complex{Float64}, length(basis), length(basis)), norm(B), B./norm(B), CoordinateFrame())
-    # recalculate the matrix representation
-    recalculate!(op)
+    op = MagneticFieldOperator{SPB}(basis, norm(B), B./norm(B), CoordinateFrame())
     # return the operator
     return op
 end
 # Custom constructor (without explicit matrix rep) separate strength and direction
 function MagneticFieldOperator(basis::SPB, B::Real, B_dir::Vector{<:Real}=[0,0,1]) where {SPB<:SPBasis{BasisStateLS}}
     # construct new operator
-    op = MagneticFieldOperator{SPB}(basis, zeros(Complex{Float64}, length(basis), length(basis)), B, B_dir./norm(B_dir), CoordinateFrame())
-    # recalculate the matrix representation
-    recalculate!(op)
+    op = MagneticFieldOperator{SPB}(basis, B, B_dir./norm(B_dir), CoordinateFrame())
     # return the operator
     return op
 end
@@ -135,57 +124,37 @@ function basis(operator :: MagneticFieldOperator{SPB}) :: SPB where {SPSSBS<:Abs
     return operator.basis
 end
 
-# obtain the matrix representation
-function matrix_representation(operator :: MagneticFieldOperator{SPB}) :: Matrix{Complex{Float64}} where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
-    return operator.matrix_rep .* operator.B
-end
-
-# possibly recalculate the matrix representation
-function recalculate!(operator :: MagneticFieldOperator{SPB}, recursive::Bool=true, basis_change::Bool=true) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
-    # check if the size of matrix is still okay
-    if size(operator.matrix_rep,1) == length(basis(operator)) && size(operator.matrix_rep,2) == length(basis(operator))
-        # size is okay, multiply matrix by 0 to erase all elements
-        operator.matrix_rep .*= 0.0
-    else
-        # create new matrix
-        operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
-    end
-    # recalculate the matrix elements
+# calculate the matrix representation
+function matrix_representation(operator :: MagneticFieldOperator{SPB}) :: SparseMatrixCSC{Complex{Float64}} where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
+    # create new matrix
+    matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+    # calculate the matrix elements
     for alpha in 1:length(basis(operator))
     for beta in 1:length(basis(operator))
         # set the respective entry
-        operator.matrix_rep[alpha, beta] = getMatrixElementBDotS(basis(operator)[alpha], basis(operator)[beta], operator.B_dir, operator.spin_quantization)
+        matrix_rep[alpha, beta] = getMatrixElementBDotS(basis(operator)[alpha], basis(operator)[beta], operator.B_dir, operator.spin_quantization)
     end
     end
+    # return matrix representation
+    return matrix_rep .* operator.B
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: MagneticFieldOperator{SPB}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, kwargs...) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
+function set_parameter!(operator :: MagneticFieldOperator{SPB}, parameter :: Symbol, value; print_result::Bool=false, kwargs...) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     # check if parameter can be set
     if parameter == :B
         # check if it is only strenth or if it includes direction
         if typeof(value) <: Vector{<:Real}
             # includes direction
-            if recalculate && (operator.B != norm(value) || operator.B_dir != value ./ norm(value))
-                operator.B = norm(value)
-                operator.B_dir = value ./ norm(value)
-                recalculate!(operator)
-            else
-                operator.B = norm(value)
-                operator.B_dir = value ./ norm(value)
-            end
+            operator.B = norm(value)
+            operator.B_dir = value ./ norm(value)
             # print
             if print_result
                 println("Parameter :$(parameter) found and set to value $(operator.B) with direction $(operator.B_dir)")
             end
         elseif typeof(value) <: Real
             # does not include direction
-            if recalculate && operator.B != norm(value)
-                operator.B = norm(value)
-                recalculate!(operator)
-            else
-                operator.B = norm(value)
-            end
+            operator.B = norm(value)
             # print
             if print_result
                 println("Parameter :$(parameter) found and set to value $(operator.B)")
@@ -198,12 +167,7 @@ function set_parameter!(operator :: MagneticFieldOperator{SPB}, parameter :: Sym
         return (true, true)# check if parameter can be set
     elseif parameter == :B_dir
         # set value
-        if recalculate && operator.B_dir != value ./ norm(value)
-            operator.B_dir = value ./ norm(value)
-            recalculate!(operator)
-        else
-            operator.B_dir = value ./ norm(value)
-        end
+        operator.B_dir = value ./ norm(value)
         # print
         if print_result
             println("Parameter :$(parameter) found and set to value $(operator.B_dir)")
@@ -211,19 +175,10 @@ function set_parameter!(operator :: MagneticFieldOperator{SPB}, parameter :: Sym
         return (true, true)
     elseif parameter == :spin_axis || parameter == :spin_quantization
         # set value
-        if recalculate
-            try
-                operator.spin_quantization = value
-            catch Exception
-                @error "recognized parameter :$(parameter) but the type is not matching CoordinateFrame: $(typeof(value))" stacktrace()
-            end
-            recalculate!(operator)
-        else
-            try
-                operator.spin_quantization = value
-            catch Exception
-                @error "recognized parameter :$(parameter) but the type is not matching CoordinateFrame: $(typeof(value))" stacktrace()
-            end
+        try
+            operator.spin_quantization = value
+        catch Exception
+            @error "recognized parameter :$(parameter) but the type is not matching CoordinateFrame: $(typeof(value))" stacktrace()
         end
         # print
         if print_result
