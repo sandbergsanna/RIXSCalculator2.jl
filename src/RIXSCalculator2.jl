@@ -23,6 +23,7 @@ module RIXSCalculator2
     include("basis/basis.jl")
     include("coordinate_frames/coordinate_frames.jl")
     include("operators/operators.jl")
+    include("transitions/transitions.jl")
     
 
 
