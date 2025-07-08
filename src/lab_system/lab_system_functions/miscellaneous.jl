@@ -43,11 +43,9 @@ function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false)
             end
             if lab.dipoles_ver[s].edge != lab.edge
                 lab.dipoles_ver[s].edge = lab.edge
-                recalculate!(lab.dipoles_ver[s], true, true)
             end
             if lab.dipoles_hor[s].edge != lab.edge
                 lab.dipoles_hor[s].edge = lab.edge
-                recalculate!(lab.dipoles_hor[s], true, true)
             end
         end
         # build sums of diple operators
@@ -101,34 +99,29 @@ function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false)
             end
             if lab.dipoles_ver[s].edge != lab.edge
                 lab.dipoles_ver[s].edge = lab.edge
-                recalculate!(lab.dipoles_ver[s], true, true)
             end
             if lab.dipoles_hor[s].edge != lab.edge
                 lab.dipoles_hor[s].edge = lab.edge
-                recalculate!(lab.dipoles_hor[s], true, true)
             end
         end
     end
-    # recalculate the dipole operator top down
-    recalculate!(lab.dipole_hor, true, false)
-    recalculate!(lab.dipole_ver, true, false)
-end
-# recalculate the hamiltonian
-function recalculate_hamiltonian!(ls :: LabSystem, basis_change::Bool=true, rediagonalize::Bool=true)
-    # recalculate hamiltonian
-    recalculate!(ls.hamiltonian, true, basis_change)
-    # maybe rediagonalize
-    if rediagonalize
-        ls.eigensys = eigensystem(ls.hamiltonian)
-    end
 end
 
-# possibly recalculate the matrix representation
+# rediagonalize the hamiltonian
+function rediagonalize_hamiltonian!(ls :: LabSystem)
+    # rediagonalize
+    ls.eigensys = eigensystem(ls.hamiltonian)
+end
+
+# possibly recalculate the matrix representation for the dipole operators
+# possibly rediagonalize the hamiltonian
 function recalculate!(ls :: LabSystem, basis_change::Bool=true, rediagonalize::Bool=true)
     # maybe recalculate dipole operators
     recalculate_dipole_operators!(ls, new_objects=basis_change)
-    # recalculate hamiltonian
-    recalculate_hamiltonian!(ls, basis_change, rediagonalize)
+    # maybe rediagonalize hamiltonian
+    if rediagonalize
+        rediagonalize_hamiltonian!(ls)
+    end
 end
 
 
@@ -149,7 +142,7 @@ function get_spectrum(
         ) :: Spectrum where {B <: AbstractBasis}
 
     # construct spectrum
-    return get_spectrum(ls.eigensys, ls.dipole_hor, args...; kwargs...) + get_spectrum(ls.hamiltonian, ls.dipole_ver, args...; kwargs...)
+    return get_spectrum(ls.eigensys, ls.dipole_hor, args...; kwargs...) + get_spectrum(ls.eigensys, ls.dipole_ver, args...; kwargs...)
 end
 
 
@@ -198,7 +191,7 @@ end
 
 
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(ls :: LabSystem, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, site=:all, relative_to::Symbol=:sample, rediagonalize::Bool=true, kwargs...)
+function set_parameter!(ls :: LabSystem, parameter :: Symbol, value; print_result::Bool=false, site=:all, relative_to::Symbol=:sample, rediagonalize::Bool=true, kwargs...)
     # check if it can be set in 1
     if site == :all
         # define dfault parameters
@@ -206,12 +199,14 @@ function set_parameter!(ls :: LabSystem, parameter :: Symbol, value; print_resul
         # go through all sites
         for s in 1:length(ls.sites)
             # set the value on site s
-            found_param_s, changed_matrix_s = set_parameter!(ls, parameter, value; print_result=print_result, recalculate=false, site=s, relative_to=relative_to, kwargs...)
+            found_param_s, changed_matrix_s = set_parameter!(ls, parameter, value; print_result=print_result, site=s, relative_to=relative_to, kwargs...)
             # process parameters
             found_param_s, changed_matrix_s = (found_param || found_param_s), (changed_matrix || changed_matrix_s)
         end
-        # recalculate everything
-        recalculate_hamiltonian!(ls, false, found_param && rediagonalize)
+        # maybe rediagonalize hamiltonian
+        if found_param && rediagonalize
+            rediagonalize_hamiltonian!(ls)
+        end
         # return
         return (found_param, changed_matrix)
     elseif typeof(site) <: Integer
@@ -230,7 +225,7 @@ function set_parameter!(ls :: LabSystem, parameter :: Symbol, value; print_resul
             end
         end
         # set parameter
-        found_param, changed_matrix = set_parameter!(ls.hamiltonian, parameter, value, print_result=print_result, recalculate=true; site=site, kwargs...)
+        found_param, changed_matrix = set_parameter!(ls.hamiltonian, parameter, value, print_result=print_result; site=site, kwargs...)
         return (found_param, changed_matrix)
     else
         error("specify a corret site: $(site)")

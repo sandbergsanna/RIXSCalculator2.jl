@@ -10,11 +10,7 @@
 
 - `edge :: Int64`, the current edge;
 
-- `basis_core :: SPBasis{SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}}`, the core hole basis  (p orbitals or core with j=1/2 or j=3/2);
-
 - `spin_quantization:: CoordinateFrame`, the spin quantization frame;
-
-- `core_hole_projection :: Matrix{Complex{Float64}}`, the core-hole projection;
 
 - `site :: Int64`, the site;  
 
@@ -28,9 +24,6 @@
 
 - `q_out :: Vector{Float64}`, the ingoing momentum;
 
-- `D_x`, `D_y`, `D_z`, dipole matrices all of type `Matrix{Complex{Float64}}`;
-
-- `matrix_rep :: Matrix{Complex{Float64}}`, the current matrix representation without prefactor.
 """
 mutable struct DipoleOperator <: AbstractSPMSOperator{SPBasis{SPMSBasisState{BasisStateXYZ}}}
 
@@ -39,14 +32,9 @@ mutable struct DipoleOperator <: AbstractSPMSOperator{SPBasis{SPMSBasisState{Bas
 
     # the current edge
     edge :: Int64
-    # the core hole basis (p orbitals or core with j=1/2 or j=3/2)
-    basis_core :: SPBasis{SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}}
 
     # spin quantization frame
     spin_quantization :: CoordinateFrame
-
-    # the core hole projection (L=2 / L=3)
-    core_hole_projection :: Matrix{Complex{Float64}}
 
     # the site index
     site :: Int64
@@ -63,14 +51,6 @@ mutable struct DipoleOperator <: AbstractSPMSOperator{SPBasis{SPMSBasisState{Bas
     eps_out :: Vector{Float64}
     # the outgoing momentum
     q_out   :: Vector{Float64}
-
-    # dipole matrices
-    D_x :: Matrix{Complex{Float64}}
-    D_y :: Matrix{Complex{Float64}}
-    D_z :: Matrix{Complex{Float64}}
-
-    # the current matrix representation (without prefactor)
-    matrix_rep :: Matrix{Complex{Float64}}
 
 end
 
@@ -103,23 +83,14 @@ function DipoleOperator(
     op = DipoleOperator(
         SPBasis{SPMSBasisState{BasisStateXYZ}}([ SPMSBasisState{BasisStateXYZ}(state, site) for state in states(getT2GBasisXYZ()) ]),
         edge,
-        SPBasis{SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}}([]),
         CoordinateFrame(),
-        zeros(Complex{Float64},2,2),
         site,
         site_position,
         eps_in,
         q_in,
         eps_out,
-        q_out,
-        zeros(Complex{Float64},2,2),
-        zeros(Complex{Float64},2,2),
-        zeros(Complex{Float64},2,2),
-        zeros(Complex{Float64},2,2),
+        q_out
     )
-
-    # recalculate everything
-    recalculate!(op, true, true)
 
     # return the object
     return op
@@ -171,97 +142,90 @@ function basis(op :: DipoleOperator)
     return op.basis
 end
 
-# obtain the matrix representation
-function matrix_representation(op :: DipoleOperator) :: Matrix{Complex{Float64}}
-    return op.matrix_rep
-end
-
-# recalculate the matrix
-function recalculate!(op :: DipoleOperator, recursive::Bool=true, basis_change::Bool=true)
-
-    # recalculate the bases
-    if basis_change
-
-        # 1) recalculate the p basis
-        # define the spin orbit operator in the relevant quantization axis
-        SO_operator = SpinOrbitOperator(getT2GBasisLS(), 10.0)
-        set_parameter!(SO_operator, :spin_quantization, op.spin_quantization)
-        # generate spin orbit eigensystem
-        so_es  = eigensystem(SO_operator)
-        # generate the p basis out of this
-        p_basis = deepcopy(toCompositeBasis(so_es))
-        # set the core basis accordingly
-        if op.edge == 2
-            # p = 1/2 wanted
-            op.basis_core = SPBasis{SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}}(
-                [ SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}(state, op.site) for state in states(p_basis)[1:2]]
-            )
-        elseif op.edge == 3
-            # p = 3/2 wanted
-            op.basis_core = SPBasis{SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}}(
-                [ SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}(state, op.site) for state in states(p_basis)[3:6]]
-            )
-        elseif op.edge == -1
-            # no p selection wanted
-            op.basis_core = SPBasis{SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}}(
-                [ SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}(state, op.site) for state in states(p_basis) ]
-            )
-        else
-            error("Unknown edge: ", op.edge)
-        end
-
-        # 2) recalculate the t2g basis
-        op.basis = SPBasis{SPMSBasisState{BasisStateXYZ}}(
-            [ SPMSBasisState{BasisStateXYZ}(state, op.site) for state in states(getT2GBasisXYZ()) ]
+# calculate the matrix representation
+function matrix_representation(op :: DipoleOperator) :: SparseMatrixCSC{Complex{Float64}}
+    # calculate the bases
+    # 1) calculate the p basis
+    # define the spin orbit operator in the relevant quantization axis
+    SO_operator = SpinOrbitOperator(getT2GBasisLS(), 10.0)
+    set_parameter!(SO_operator, :spin_quantization, op.spin_quantization)
+    # generate spin orbit eigensystem
+    so_es  = eigensystem(SO_operator)
+    # generate the p basis out of this
+    p_basis = deepcopy(toCompositeBasis(so_es))
+    # set the core basis accordingly
+    if op.edge == 2
+        # p = 1/2 wanted
+        basis_core = SPBasis{SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}}(
+            [ SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}(state, op.site) for state in states(p_basis)[1:2]]
         )
-
+    elseif op.edge == 3
+        # p = 3/2 wanted
+        basis_core = SPBasis{SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}}(
+            [ SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}(state, op.site) for state in states(p_basis)[3:6]]
+        )
+    elseif op.edge == -1
+        # no p selection wanted
+        basis_core = SPBasis{SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}}(
+            [ SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}(state, op.site) for state in states(p_basis) ]
+        )
+    else
+        error("Unknown edge: ", op.edge)
     end
 
+     # 2) recalculate the t2g basis
+    op.basis = SPBasis{SPMSBasisState{BasisStateXYZ}}(
+        [ SPMSBasisState{BasisStateXYZ}(state, op.site) for state in states(getT2GBasisXYZ()) ]
+    )
 
+    # calculate the internal matrices
+    # 1) recalculate the core hole projection
+    core_hole_projection =  projector_matrix(op.basis, basis_core) * projector_matrix(basis_core, op.basis)
 
-    # recalculate the internal matrices
-    if recursive || basis_change
-
-        # 1) recalculate the core hole projection
-        op.core_hole_projection =  projector_matrix(op.basis, op.basis_core) * projector_matrix(op.basis_core, op.basis)
-
-        # 2) recalculate the D matrices
-        op.D_x = zeros(Complex{Float64}, 6,6)
-        op.D_y = zeros(Complex{Float64}, 6,6)
-        op.D_z = zeros(Complex{Float64}, 6,6)
-        # fill the matrices
-        op.D_x[3,5] = 1    # <y|x|z> down
-        op.D_x[5,3] = 1    # <z|x|y> down
-        op.D_x[4,6] = 1    # <y|x|z> up
-        op.D_x[6,4] = 1    # <z|x|y> up
-        op.D_y[1,5] = 1    # <x|y|z> down
-        op.D_y[5,1] = 1    # <z|y|x> down
-        op.D_y[2,6] = 1    # <x|y|z> up
-        op.D_y[6,2] = 1    # <z|y|x> up
-        op.D_z[1,3] = 1    # <x|z|y> down
-        op.D_z[3,1] = 1    # <y|z|x> down
-        op.D_z[2,4] = 1    # <x|z|y> up
-        op.D_z[4,2] = 1    # <y|z|x> up
-
-    end
+    # 2) calculate the D matrices
+    D_x,D_y,D_z=D_matrices()
 
     # normalize polarizations
     op.eps_in  = op.eps_in  ./ norm(op.eps_in)
     op.eps_out = op.eps_out ./ norm(op.eps_out)
 
-    # recalculate the matrix representation
+    # calculate the matrix representation
 
     # compose D matrices
-    D_in  = ((op.D_x .* op.eps_in[1])   .+
-             (op.D_y .* op.eps_in[2])   .+
-             (op.D_z .* op.eps_in[3]))  .* exp(-im*dot(op.position, op.q_in))
-    D_out = ((op.D_x .* op.eps_out[1])  .+
-             (op.D_y .* op.eps_out[2])  .+
-             (op.D_z .* op.eps_out[3])) .* exp(-im*dot(op.position, op.q_out))
+    D_in  = ((D_x .* op.eps_in[1])   .+
+             (D_y .* op.eps_in[2])   .+
+             (D_z .* op.eps_in[3]))  .* exp(-im*dot(op.position, op.q_in))
+    D_out = ((D_x .* op.eps_out[1])  .+
+             (D_y .* op.eps_out[2])  .+
+             (D_z .* op.eps_out[3])) .* exp(-im*dot(op.position, op.q_out))
 
     # compose the complete string
-    op.matrix_rep = D_out' * op.core_hole_projection * D_in
+    matrix_rep = D_out' * core_hole_projection * D_in
 
     # return nothing
-    return nothing
+    return matrix_rep
+end
+
+# calculate D matrices 
+function D_matrices() :: Tuple{SparseMatrixCSC{Complex{Float64}},SparseMatrixCSC{Complex{Float64}},SparseMatrixCSC{Complex{Float64}}}
+    # calculate the D matrices
+    D_x = spzeros(Complex{Float64}, 6,6)
+    D_y = spzeros(Complex{Float64}, 6,6)
+    D_z = spzeros(Complex{Float64}, 6,6)
+    # fill the matrices
+    D_x[3,5] = 1    # <y|x|z> down
+    D_x[5,3] = 1    # <z|x|y> down
+    D_x[4,6] = 1    # <y|x|z> up
+    D_x[6,4] = 1    # <z|x|y> up
+    D_y[1,5] = 1    # <x|y|z> down
+    D_y[5,1] = 1    # <z|y|x> down
+    D_y[2,6] = 1    # <x|y|z> up
+    D_y[6,2] = 1    # <z|y|x> up
+    D_z[1,3] = 1    # <x|z|y> down
+    D_z[3,1] = 1    # <y|z|x> down
+    D_z[2,4] = 1    # <x|z|y> up
+    D_z[4,2] = 1    # <y|z|x> up
+
+    # return D matrices
+    return D_x,D_y,D_z
 end

@@ -541,8 +541,6 @@ mutable struct GeneralProjectorOperator{
             }
         # create a new operator
         op = new{AB_IN, AB_OUT, AO}(basis(operator), basis_to, operator)
-        # recalculate the matrix representation
-        recalculate!(op, true)
         # return the operator
         return op
     end

@@ -42,22 +42,6 @@ return dot(state_1, matrix_representation(operator) * state_2)
 end
 export matrix_element
 
-# possibly recalculate the matrix representation
-"""
-recalculate!(operator :: OP,
-             recursive::Bool=true, 
-             basis_change::Bool=true) 
-             where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, OP<:AbstractOperator{B}}
-
-The function recalculates the matrix representation.
-"""
-function recalculate!(operator :: OP, recursive::Bool=true, basis_change::Bool=true) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, OP<:AbstractOperator{B}}
-@error "Interface function 'recalculate!' not implemented for operator of type $(OP)" stacktrace()
-end
-export recalculate!
-
-
-
 
 # set a parameter (returns (found parameter?, changed matrix?))
 """
