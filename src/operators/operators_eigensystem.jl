@@ -59,7 +59,36 @@ function eigensystem(operator :: AbstractOperator{B}, basis_new::B2; subtract_GS
 end
 export eigensystem
 
+function toCompositeBasis(
+            eigensystem :: Dict
+        )
+    # check if SPBasis or MPBasis
+    if typeof(basis(eigensystem[:operator])) <: SPBasis
+        return SPBasis([CompositeBasisState(s,basis(eigensystem[:operator])) for s in eigensystem[:vectors]])
+    end
+end
 
+function printMPState(
+        eigensystem :: Dict,
+        index :: Integer
+        ;
+        subtract_GS :: Bool=false,
+        cutoff :: Real = 0.01,
+        digits :: Integer = 3,
+        max_contributions :: Integer = 10
+    )
+    # get the state and the eigenenergy
+    es_state  = eigensystem[:vectors][index]
+    es_energy = eigensystem[:values][index]
+    if subtract_GS
+        es_energy -= eigensystem[:values][1]
+    end
+    # get the basis of the operator
+    b = basis(eigensystem[:operator])
+    # print the state
+    printMPState(es_state, b, cutoff=cutoff, digits=digits, max_contributions=max_contributions, energy=es_energy, es_index=index)
+end
+export printMPState
 
 
 function energies(op :: AbstractOperator)
@@ -91,4 +120,30 @@ function print_energies(op :: AbstractOperator; digits::Int64=6, subtract_GS::Bo
     end
 end
 export print_energies
+
+function is_on_site(
+        state :: Vector{<:Number},
+        site  :: Integer,
+        b     :: MPBasis
+        ;
+        precision :: Real = 1e-3
+    ) :: Bool
+
+    # check which single particle states contain site
+    state_indices = Int64[
+        i for i in 1:length(b.single_particle_basis) if b.single_particle_basis[i].site == site
+    ]
+    # check which multi particle states contain site
+    state_indices_mp = sort(unique(Int64[
+        i for j in state_indices for i in b.lookup_sp_states[j]
+    ]))
+    # check if the state contains elements of list
+    for i in state_indices_mp
+        if abs(state[i]) > precision
+            return true
+        end
+    end
+    return false
+end
+export is_on_site
 
