@@ -30,7 +30,7 @@ function basis(operator :: OP) where {BS<:AbstractBasisState, B<:AbstractBasis{B
 end
 export basis
 
-# obtain the matrix representation
+# calculate the matrix representation
 function matrix_representation(operator :: OP) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, OP<:AbstractOperator{B}}
 @error "Interface function 'matrix_representation' not implemented for operator of type $(OP)" stacktrace()
 end
