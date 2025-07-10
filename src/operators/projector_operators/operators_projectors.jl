@@ -20,6 +20,7 @@ This object defines the local multi-site projector operator. This operator only 
 
 - `basis_in  :: SPSSB_IN`, `basis :: SPSSB_OUT`, the multi-site bases
 - `operator  :: SPO`, the single site basis;
+- `projector_in_out :: SparseMatrixCSC{Complex{Float64}}`, the matrix representation of the projector;
 
 """
 mutable struct SPSSProjectorOperator{
@@ -35,6 +36,8 @@ mutable struct SPSSProjectorOperator{
     basis :: SPSSB_OUT
     # the single site operator
     operator  :: SPO
+    # the matrix representation of the projector
+    projector_in_out :: SparseMatrixCSC{Complex{Float64}}
 
     # custom constructor
     function SPSSProjectorOperator(operator :: SPO, basis_to :: SPSSB_OUT) where {
@@ -45,7 +48,9 @@ mutable struct SPSSProjectorOperator{
                 SPO <: AbstractSPSSOperator{SPSSB_IN}
             }
         # create a new operator
-        op = new{SPSSBS_IN,SPSSBS_OUT, SPSSB_IN,SPSSB_OUT, SPO}(basis(operator), basis_to, operator)
+        op = new{SPSSBS_IN,SPSSBS_OUT, SPSSB_IN,SPSSB_OUT, SPO}(basis(operator), basis_to, operator, projector_matrix(basis(operator), basis_to))
+        # recalculate the matrix representation
+        recalculate!(op, true)
         # return the operator
         return op
     end
@@ -115,17 +120,34 @@ function matrix_representation(operator :: SPSSProjectorOperator{SPSSBS_IN,SPSSB
             SPSSB_OUT  <: SPBasis{SPSSBS_OUT},
             SPO <: AbstractSPSSOperator{SPSSB_IN}
         }
-
-    # calculate new projector P_12
-    projector_in_out = projector_matrix(operator.basis_in, operator.basis)
     # calculate new matrix h_2 = P_12' * h_1 * P_12
-    matrix_rep = projector_in_out' * matrix_representation(operator.operator) * projector_in_out
+    matrix_rep = operator.projector_in_out' * matrix_representation(operator.operator) * operator.projector_in_out
     # return matrix rep
     return matrix_rep
 end
 
+# possibly recalculate the matrix representation
+function recalculate!(operator :: SPSSProjectorOperator{SPSSBS_IN,SPSSBS_OUT, SPSSB_IN,SPSSB_OUT, SPO}, recursive::Bool=true, basis_change::Bool=true) where {
+            SPSSBS_IN  <: AbstractSPSSBasisState,
+            SPSSBS_OUT <: AbstractSPSSBasisState,
+            SPSSB_IN   <: SPBasis{SPSSBS_IN},
+            SPSSB_OUT  <: SPBasis{SPSSBS_OUT},
+            SPO <: AbstractSPSSOperator{SPSSB_IN}
+        }
+    # maybe recalculate the inner operator
+    if recursive
+        recalculate!(operator.operator, recursive, basis_change)
+    end
+    # calculate new projector P_12
+    if basis_change
+        operator.projector_in_out = projector_matrix(operator.basis_in, operator.basis)
+    end
+    # return nothing
+    return nothing
+end
+
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: SPSSProjectorOperator{SPSSBS_IN,SPSSBS_OUT, SPSSB_IN,SPSSB_OUT, SPO}, parameter :: Symbol, value; print_result::Bool=false, kwargs...) where {
+function set_parameter!(operator :: SPSSProjectorOperator{SPSSBS_IN,SPSSBS_OUT, SPSSB_IN,SPSSB_OUT, SPO}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, kwargs...) where {
             SPSSBS_IN  <: AbstractSPSSBasisState,
             SPSSBS_OUT <: AbstractSPSSBasisState,
             SPSSB_IN   <: SPBasis{SPSSBS_IN},
@@ -133,7 +155,7 @@ function set_parameter!(operator :: SPSSProjectorOperator{SPSSBS_IN,SPSSBS_OUT, 
             SPO <: AbstractSPSSOperator{SPSSB_IN}
         }
     # pass to inner operator
-    (fp, cm) = set_parameter!(operator.operator, parameter, value; print_result=print_result, kwargs...)
+    (fp, cm) = set_parameter!(operator.operator, parameter, value; print_result=print_result, recalculate=recalculate, kwargs...)
     # return the same variables
     return (fp, cm)
 end
@@ -196,6 +218,7 @@ This object defines the local multi-site operator.
 
 - `basis_in  :: SPMSB_IN`, `basis :: SPMSB_OUT`, the multi-site bases;
 - `operator  :: SPO`, the single particle multi site operator;
+- `projector_in_out :: SparseMatrixCSC{Complex{Float64}}`, the matrix representation of the projector;
 
 """
 mutable struct SPMSProjectorOperator{
@@ -209,6 +232,8 @@ mutable struct SPMSProjectorOperator{
     basis :: SPMSB_OUT
     # the single particle multi site operator
     operator  :: SPO
+    # the matrix representation of the projector
+    projector_in_out :: SparseMatrixCSC{Complex{Float64}}
 
     # custom constructor
     function SPMSProjectorOperator(operator :: SPO, basis_to :: SPMSB_OUT) where {
@@ -217,7 +242,9 @@ mutable struct SPMSProjectorOperator{
                 SPO <: AbstractSPMSOperator{SPMSB_IN}
             }
         # create a new operator
-        op = new{SPMSB_IN,SPMSB_OUT, SPO}(basis(operator), basis_to, operator)
+        op = new{SPMSB_IN,SPMSB_OUT, SPO}(basis(operator), basis_to, operator, projector_matrix(basis(operator), basis_to))
+        # recalculate the matrix representation
+        recalculate!(op, true)
         # return the operator
         return op
     end
@@ -279,22 +306,38 @@ function matrix_representation(operator :: SPMSProjectorOperator{SPMSB_IN,SPMSB_
             SPMSB_OUT  <: SPBasis{SPMSBS_OUT} where {SPMSBS_OUT<:Union{SPMSBasisState{BS} where BS, SPMSCompositeBasisState{B} where B}},
             SPO <: AbstractSPMSOperator{SPMSB_IN}
         }
-    # calculate new projector P_12
-    projector_in_out = projector_matrix(operator.basis_in, operator.basis)
     # calculate new matrix h_2 = P_12' * h_1 * P_12
-    matrix_rep = projector_in_out' * matrix_representation(operator.operator) * projector_in_out
+    matrix_rep = operator.projector_in_out' * matrix_representation(operator.operator) * operator.projector_in_out
     # return matrix rep
     return matrix_rep
 end
 
+# possibly recalculate the matrix representation
+function recalculate!(operator :: SPMSProjectorOperator{SPMSB_IN,SPMSB_OUT, SPO}, recursive::Bool=true, basis_change::Bool=true) where {
+            SPMSB_IN   <: SPBasis{SPMSBS_IN} where {SPMSBS_IN<:Union{SPMSBasisState{BS} where BS, SPMSCompositeBasisState{B} where B}},
+            SPMSB_OUT  <: SPBasis{SPMSBS_OUT} where {SPMSBS_OUT<:Union{SPMSBasisState{BS} where BS, SPMSCompositeBasisState{B} where B}},
+            SPO <: AbstractSPMSOperator{SPMSB_IN}
+        }
+    # maybe recalculate the inner operator
+    if recursive
+        recalculate!(operator.operator, recursive, basis_change)
+    end
+    # calculate new projector P_12
+    if basis_change
+        operator.projector_in_out = projector_matrix(operator.basis_in, operator.basis)
+    end
+    # return nothing
+    return nothing
+end
+
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: SPMSProjectorOperator{SPMSB_IN,SPMSB_OUT, SPO}, parameter :: Symbol, value; print_result::Bool=false, kwargs...) where {
+function set_parameter!(operator :: SPMSProjectorOperator{SPMSB_IN,SPMSB_OUT, SPO}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, kwargs...) where {
             SPMSB_IN   <: SPBasis{SPMSBS_IN} where {SPMSBS_IN<:Union{SPMSBasisState{BS} where BS, SPMSCompositeBasisState{B} where B}},
             SPMSB_OUT  <: SPBasis{SPMSBS_OUT} where {SPMSBS_OUT<:Union{SPMSBasisState{BS} where BS, SPMSCompositeBasisState{B} where B}},
             SPO <: AbstractSPMSOperator{SPMSB_IN}
         }
     # pass to inner operator
-    (fp, cm) = set_parameter!(operator.operator, parameter, value; print_result=print_result, kwargs...)
+    (fp, cm) = set_parameter!(operator.operator, parameter, value; print_result=print_result, recalculate=recalculate, kwargs...)
     # return the same variables
     return (fp, cm)
 end
@@ -339,7 +382,7 @@ end
 
 
 
-# Single particle multi site projectors
+# Multi-particle multi site projectors
 
 ################################################################################
 #   Type definition
@@ -360,6 +403,8 @@ mutable struct MPProjectorOperator{
     basis     :: MPB_OUT
     # the multi particle operator
     operator  :: MPO
+    # the matrix representation of the projector
+    projector_in_out :: SparseMatrixCSC{Complex{Float64}}
 
     # custom constructor
     function MPProjectorOperator(operator :: MPO, basis_to :: MPB_OUT) where {
@@ -371,7 +416,7 @@ mutable struct MPProjectorOperator{
                 MPO <: AbstractMPOperator{NO,MPB_IN}
             }
         # create a new operator
-        op = new{N,NO, SPBS_IN,SPBS_OUT, MPB_IN,MPB_OUT, MPO}(basis(operator), basis_to, operator)
+        op = new{N,NO, SPBS_IN,SPBS_OUT, MPB_IN,MPB_OUT, MPO}(basis(operator), basis_to, operator,projector_matrix(basis(operator), basis_to))
         # recalculate the matrix representation
         recalculate!(op, true)
         # return the operator
@@ -447,16 +492,35 @@ function matrix_representation(operator :: MPProjectorOperator{N,NO, SPBS_IN,SPB
             MPB_OUT <: MPBasis{N,SPBS_OUT},
             MPO <: AbstractMPOperator{NO,MPB_IN}
         }
-    # calculate new projector P_12
-    projector_in_out = projector_matrix(operator.basis_in, operator.basis)
     # calculate new matrix h_2 = P_12' * h_1 * P_12
-    matrix_rep = projector_in_out' * matrix_representation(operator.operator) * projector_in_out
+    matrix_rep = operator.projector_in_out' * matrix_representation(operator.operator) * operator.projector_in_out
     # return matrix_rep
     return matrix_rep
 end
 
+# possibly recalculate the matrix representation
+function recalculate!(operator :: MPProjectorOperator{N,NO, SPBS_IN,SPBS_OUT, MPB_IN,MPB_OUT, MPO}, recursive::Bool=true, basis_change::Bool=true) where {
+            N, NO,
+            SPBS_IN  <: AbstractSPBasisState,
+            SPBS_OUT <: AbstractSPBasisState,
+            MPB_IN  <: MPBasis{N,SPBS_IN},
+            MPB_OUT <: MPBasis{N,SPBS_OUT},
+            MPO <: AbstractMPOperator{NO,MPB_IN}
+        }
+    # maybe recalculate the inner operator
+    if recursive
+        recalculate!(operator.operator, recursive, basis_change)
+    end
+    # calculate new projector P_12
+    if basis_change
+        operator.projector_in_out = projector_matrix(operator.basis_in, operator.basis)
+    end
+    # return nothing
+    return nothing
+end
+
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: MPProjectorOperator{N,NO, SPBS_IN,SPBS_OUT, MPB_IN,MPB_OUT, MPO}, parameter :: Symbol, value; print_result::Bool=false, kwargs...) where {
+function set_parameter!(operator :: MPProjectorOperator{N,NO, SPBS_IN,SPBS_OUT, MPB_IN,MPB_OUT, MPO}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, kwargs...) where {
             N, NO,
             SPBS_IN  <: AbstractSPBasisState,
             SPBS_OUT <: AbstractSPBasisState,
@@ -465,7 +529,7 @@ function set_parameter!(operator :: MPProjectorOperator{N,NO, SPBS_IN,SPBS_OUT, 
             MPO <: AbstractMPOperator{NO,MPB_IN}
         }
     # pass to inner operator
-    (fp, cm) = set_parameter!(operator.operator, parameter, value; print_result=print_result, kwargs...)
+    (fp, cm) = set_parameter!(operator.operator, parameter, value; print_result=print_result, recalculate=recalculate, kwargs...)
     # return the same variables
     return (fp, cm)
 end
@@ -514,7 +578,7 @@ end
 
 
 
-# Single particle multi site projectors
+# General projectors
 
 ################################################################################
 #   Type definition
@@ -532,6 +596,8 @@ mutable struct GeneralProjectorOperator{
     basis     :: AB_OUT
     # the multi particle operator
     operator  :: AO
+    # the matrix representation of the projector
+    projector_in_out :: SparseMatrixCSC{Complex{Float64}}
 
     # custom constructor
     function GeneralProjectorOperator(operator :: AO, basis_to :: AB_OUT) where {
@@ -540,7 +606,9 @@ mutable struct GeneralProjectorOperator{
                 AO <: AbstractOperator{AB_IN}
             }
         # create a new operator
-        op = new{AB_IN, AB_OUT, AO}(basis(operator), basis_to, operator)
+        op = new{AB_IN, AB_OUT, AO}(basis(operator), basis_to, operator,projector_matrix(basis(operator), basis_to))
+        # recalculate the matrix representation
+        recalculate!(op, true)
         # return the operator
         return op
     end
@@ -602,22 +670,38 @@ function matrix_representation(operator :: GeneralProjectorOperator{AB_IN, AB_OU
             AB_OUT <: AbstractBasis,
             AO <: AbstractOperator{AB_IN}
         }
-    # calculate new projector P_12
-    projector_in_out = projector_matrix(operator.basis_in, operator.basis)
     # calculate new matrix h_2 = P_12' * h_1 * P_12
-    matrix_rep = projector_in_out' * matrix_representation(operator.operator) * projector_in_out
+    matrix_rep = operator.projector_in_out' * matrix_representation(operator.operator) * operator.projector_in_out
     # return matrix rep
     return matrix_rep
 end
 
+# possibly recalculate the matrix representation
+function recalculate!(operator :: GeneralProjectorOperator{AB_IN, AB_OUT, AO}, recursive::Bool=true, basis_change::Bool=true) where {
+            AB_IN  <: AbstractBasis,
+            AB_OUT <: AbstractBasis,
+            AO <: AbstractOperator{AB_IN}
+        }
+    # maybe recalculate the inner operator
+    if recursive
+        recalculate!(operator.operator, recursive, basis_change)
+    end
+    # calculate new projector P_12
+    if basis_change
+        operator.projector_in_out = projector_matrix(operator.basis_in, operator.basis)
+    end
+    # return nothing
+    return nothing
+end
+
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: GeneralProjectorOperator{AB_IN, AB_OUT, AO}, parameter :: Symbol, value; print_result::Bool=false, kwargs...) where {
+function set_parameter!(operator :: GeneralProjectorOperator{AB_IN, AB_OUT, AO}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, kwargs...) where {
             AB_IN  <: AbstractBasis,
             AB_OUT <: AbstractBasis,
             AO <: AbstractOperator{AB_IN}
         }
     # pass to inner operator
-    (fp, cm) = set_parameter!(operator.operator, parameter, value; print_result=print_result, kwargs...)
+    (fp, cm) = set_parameter!(operator.operator, parameter, value; print_result=print_result, recalculate=recalculate, kwargs...)
     # return the same variables
     return (fp, cm)
 end

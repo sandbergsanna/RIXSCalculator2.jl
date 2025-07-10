@@ -68,10 +68,18 @@ function matrix_representation(operator :: SettableScalarProductOperator{B, O}) 
     return matrix_representation(operator.op) .* operator.factor
 end
 
+# possibly recalculate the matrix representation
+function recalculate!(operator :: SettableScalarProductOperator{B, O}, recursive::Bool=true, basis_change::Bool=true) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O<:AbstractOperator{B}}
+    # maybe recalculate recursively
+    if recursive
+        recalculate!(operator.op, true, basis_change)
+    end
+end
+
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: SettableScalarProductOperator{B, O}, parameter :: Symbol, value; print_result::Bool=false, kwargs...) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O<:AbstractOperator{B}}
+function set_parameter!(operator :: SettableScalarProductOperator{B, O}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, kwargs...) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O<:AbstractOperator{B}}
     # check if it can be set in 1
-    found_param, changed_matrix = set_parameter!(operator.op, parameter, value, print_result=print_result; kwargs...)
+    found_param, changed_matrix = set_parameter!(operator.op, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
     if parameter == operator.label
         found_param_i = true
         operator.factor = value

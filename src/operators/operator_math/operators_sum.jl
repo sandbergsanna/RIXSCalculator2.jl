@@ -90,12 +90,20 @@ function matrix_representation(operator :: SumOperator{B, O1, O2}) :: SparseMatr
     return matrix_representation(operator.op_1) .+ matrix_representation(operator.op_2)
 end
 
+# possibly recalculate the matrix representation
+function recalculate!(operator :: SumOperator{B, O1, O2}, recursive::Bool=true, basis_change::Bool=true)  where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
+    # maybe recalculate recursively
+    if recursive
+        recalculate!(operator.op_1, true, basis_change)
+        recalculate!(operator.op_2, true, basis_change)
+    end
+end
+
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: SumOperator{B, O1, O2}, parameter :: Symbol, value; print_result::Bool=false, kwargs...) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
-    # check if it can be set in 1
-    found_param_1, changed_matrix_1 = set_parameter!(operator.op_1, parameter, value, print_result=print_result; kwargs...)
-    found_param_2, changed_matrix_2 = set_parameter!(operator.op_2, parameter, value, print_result=print_result; kwargs...)
-    # return found parameter and changed matrix
+function set_parameter!(operator :: SumOperator{B, O1, O2}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, kwargs...) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
+    # check if it can be set in operator 1 or 2
+    found_param_1, changed_matrix_1 = set_parameter!(operator.op_1, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
+    found_param_2, changed_matrix_2 = set_parameter!(operator.op_2, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
     return (found_param_1 || found_param_2, changed_matrix_1 || changed_matrix_2)
 end
 

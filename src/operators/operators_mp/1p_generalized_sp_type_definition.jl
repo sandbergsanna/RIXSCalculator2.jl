@@ -107,18 +107,38 @@ function matrix_representation(operator :: MPGeneralizedSPOperator{SPBS, MPB, SP
     return matrix_rep
 end
 
+# possibly recalculate the matrix representation
+function recalculate!(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}, recursive::Bool=true, basis_change::Bool=true) where {
+            N,
+            SPBS <: AbstractSPBasisState,
+            MPB <: MPBasis{N,SPBS},
+            SPO <: AbstractSPOperator{SPBasis{SPBS}}
+        }
+    # maybe calculate recursively
+    if recursive
+        if basis_change
+            # reset the basis in the single particle operator
+            operator.operator.basis = operator.basis.single_particle_basis
+            # let operator recalculate
+            recalculate!(operator.operator, true, true)
+        else
+            # let operator recalculate
+            recalculate!(operator.operator, true, false)
+        end
+    end
+end
+
 
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}, parameter :: Symbol, value; print_result::Bool=true, kwargs...) where {
-        N,
-        SPBS <: AbstractSPBasisState,
-        MPB <: MPBasis{N,SPBS},
-        SPO <: AbstractSPOperator{SPBasis{SPBS}}
-    }
-# pass on to contained operator
-found_param, changed_matrix = set_parameter!(operator.operator, parameter, value, print_result=print_result; kwargs...)
-# return found parameter and changed matrix
-return (found_param, changed_matrix)
+function set_parameter!(operator :: MPGeneralizedSPOperator{SPBS, MPB, SPO}, parameter :: Symbol, value; print_result::Bool=true, recalculate::Bool=true, kwargs...) where {
+            N,
+            SPBS <: AbstractSPBasisState,
+            MPB <: MPBasis{N,SPBS},
+            SPO <: AbstractSPOperator{SPBasis{SPBS}}
+        }
+    # pass on to contained operator
+    found_param, changed_matrix = set_parameter!(operator.operator, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
+    return (found_param, changed_matrix)
 end
 
 # get a parameter (returns (found parameter?, parameter value or nothing))

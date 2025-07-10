@@ -30,6 +30,7 @@ The hamiltonian is defined as follows in the electron picture:
 
 # Fields
 - `basis :: MPB`, the multi-particle basis;
+- `matrix_rep :: SparseMatrixCSC{Complex{Float64}} `, the matrix representation of the operator;
 - `site :: Int64`, the site;
 - `u1 :: Float64`, `u2 :: Float64`, `jH :: Float64`, the parameters;
 - `op_den_den_same_orb  :: MPElectronDensityDensityOperator{MPB}`,
@@ -47,6 +48,8 @@ mutable struct MPElectronPerkinsWoelfleHamiltonian{
 
     # the MP basis
     basis :: MPB
+    # the matrix representation
+    matrix_rep :: SparseMatrixCSC{Complex{Float64}}
 
     # the site
     site :: Int64
@@ -77,7 +80,9 @@ mutable struct MPElectronPerkinsWoelfleHamiltonian{
         op_2p_sc_spin_cons   = generate2PScatteringElectronInteractionSpinConserve(basis, site, jH)
         op_2p_sc_spin_flip   = generate2PScatteringElectronInteractionSpinFlip(basis, site, -jH)
         # construct new operator with those suboperators
-        op = new{MPB}(basis, site, u1,u2,jH, op_den_den_same_orb, op_den_den_same_spin, op_den_den_remainder, op_2p_sc_spin_cons, op_2p_sc_spin_flip)
+        op = new{MPB}(basis, spzeros(Complex{Float64}, length(basis),length(basis)), site, u1,u2,jH, op_den_den_same_orb, op_den_den_same_spin, op_den_den_remainder, op_2p_sc_spin_cons, op_2p_sc_spin_flip)
+        # let it recalculate
+        recalculate!(op, false)
         # return it
         return op
     end
@@ -94,6 +99,7 @@ This object defines the interaction Hamiltonian described in the Perkins-Sizyuk-
 
 # Fields
 - `basis :: MPB`, the multi-particle basis;
+- `matrix_rep :: SparseMatrixCSC{Complex{Float64}}`, the matrix representation of the operator;
 - `site :: Int64`, the site;
 - `u1 :: Float64`, `u2 :: Float64`, `jH :: Float64`, the parameters;
 - `op_den_den_same_orb  :: MPHoleDensityDensityOperator{MPB}`,
@@ -111,6 +117,8 @@ mutable struct MPHolePerkinsWoelfleHamiltonian{
 
     # the MP basis
     basis :: MPB
+    # the matrix representation
+    matrix_rep :: SparseMatrixCSC{Complex{Float64}}
 
     # the site
     site :: Int64
@@ -141,7 +149,9 @@ mutable struct MPHolePerkinsWoelfleHamiltonian{
         op_2p_sc_spin_cons   = generate2PScatteringHoleInteractionSpinConserve(basis, site, jH)
         op_2p_sc_spin_flip   = generate2PScatteringHoleInteractionSpinFlip(basis, site, -jH)
         # construct new operator with those suboperators
-        op = new{MPB}(basis, site, u1,u2,jH, op_den_den_same_orb, op_den_den_same_spin, op_den_den_remainder, op_2p_sc_spin_cons, op_2p_sc_spin_flip)
+        op = new{MPB}(basis, spzeros(Complex{Float64}, length(basis),length(basis)), site, u1,u2,jH, op_den_den_same_orb, op_den_den_same_spin, op_den_den_remainder, op_2p_sc_spin_cons, op_2p_sc_spin_flip)
+        # let it recalculate
+        recalculate!(op, false)
         # return it
         return op
     end
@@ -215,9 +225,26 @@ function basis(operator :: MPIH) :: MPB where {
     return operator.basis
 end
 
+# obtain the matrix representation (ELECTRON & HOLE)
+function matrix_representation(operator :: MPIH) :: SparseMatrixCSC{Complex{Float64}} where {
+            N, SPBS <: AbstractSPBasisState,
+            MPB <: MPBasis{N,SPBS},
+            MPIH <: AbstractMPInteractionHamiltonian{2,MPB}
+        }
+    return operator.matrix_rep
+end
+
+# possibly recalculate the matrix representation (ELECTRON & HOLE) (Fallback for non XYZ)
+function recalculate!(operator :: MPIH, recursive::Bool=true) where {
+            N, SPBS <: AbstractSPBasisState,
+            MPB <: MPBasis{N,SPBS},
+            MPIH <: AbstractMPInteractionHamiltonian{2,MPB}
+        }
+    @error "currently only recalculation of density-density operator implemented for XYZ basis states, not basis states of type $(SPBS)" stacktrace()
+end
 
 # possibly recalculate the matrix representation (ELECTRON & HOLE)
-function matrix_representation(operator :: MPIH) :: SparseMatrixCSC{Complex{Float64}} where {
+function recalculate!(operator :: MPIH, recursive::Bool=true, basis_change::Bool=true) where {
             N, SPBS <: Union{SPMSBasisState{BasisStateXYZ}, BasisStateXYZ},
             MPB <: MPBasis{N,SPBS},
             MPIH <: AbstractMPInteractionHamiltonian{2,MPB}
@@ -228,18 +255,24 @@ function matrix_representation(operator :: MPIH) :: SparseMatrixCSC{Complex{Floa
     operator.op_den_den_remainder.prefactor = operator.u2
     operator.op_2p_sc_spin_cons.prefactor   = operator.jH
     operator.op_2p_sc_spin_flip.prefactor   = -operator.jH
+    # maybe recalculate recursively
+    if recursive
+        recalculate!(operator.op_den_den_same_orb)
+        recalculate!(operator.op_den_den_same_spin)
+        recalculate!(operator.op_den_den_remainder)
+        recalculate!(operator.op_2p_sc_spin_cons)
+        recalculate!(operator.op_2p_sc_spin_flip)
+    end
     # create new matrix by summing all contributions of suboperators
-    matrix_rep =
+    operator.matrix_rep =
         matrix_representation(operator.op_den_den_same_orb)  .+
         matrix_representation(operator.op_den_den_same_spin) .+
         matrix_representation(operator.op_den_den_remainder) .+
         matrix_representation(operator.op_2p_sc_spin_cons)   .+
         matrix_representation(operator.op_2p_sc_spin_flip)
-    # return matrix represenatiation
-    return matrix_rep
+    # return nothing
+    return nothing
 end
-
-
 
 
 # setting interaction parameter (U, J_H)

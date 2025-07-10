@@ -112,7 +112,6 @@ function rediagonalize_hamiltonian!(ls :: LabSystem)
     # rediagonalize
     ls.eigensys = eigensystem(ls.hamiltonian)
 end
-export rediagonalize_hamiltonian!
 
 # possibly recalculate the matrix representation for the dipole operators
 # possibly rediagonalize the hamiltonian
@@ -124,7 +123,6 @@ function recalculate!(ls :: LabSystem; basis_change::Bool=true, rediagonalize::B
         rediagonalize_hamiltonian!(ls)
     end
 end
-export recalculate!
 
 
 function basis(ls::LabSystem)

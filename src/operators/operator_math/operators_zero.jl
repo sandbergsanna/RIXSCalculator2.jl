@@ -74,6 +74,11 @@ function matrix_representation(operator :: ZeroOperator{B}) :: SparseMatrixCSC{C
     return spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
 end
 
+# possibly recalculate the matrix representation (does nothing)
+function recalculate!(operator :: ZeroOperator{B}, recursive::Bool=true, basis_change::Bool=true)  where {BS<:AbstractBasisState, B<:AbstractBasis{BS}}
+    return nothing
+end
+
 # set a parameter (returns (found parameter?, changed matrix?))
 function set_parameter!(operator :: ZeroOperator{B}, parameter :: Symbol, value; print_result::Bool=false, kwargs...) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}}
     if print_result
