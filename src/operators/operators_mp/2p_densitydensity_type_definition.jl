@@ -143,7 +143,7 @@ function recalculate!(operator :: MPDDOP, recursive::Bool=true, basis_change::Bo
             MPDDOP <: AbstractMPDensityDensityOperator{MPB}
         }
     # create new matrix
-    operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+    operator.matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
     # generate all diagonal element contributions to the many body hamiltonian
     for alpha in 1:length(basis(operator))
         # add the expectation with ab to the matrix

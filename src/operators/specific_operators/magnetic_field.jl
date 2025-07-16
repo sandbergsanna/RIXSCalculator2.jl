@@ -26,7 +26,7 @@ This object refers to the Magnetic Field Operator.
 # Fields
 
 - `basis :: SPB`, the single particle basis;
-- `matrix_rep :: SparseMatrixCSC{Complex{Float64}}`, the matrix representation of the operator;
+- `matrix_rep :: Matrix{Complex{Float64}}`, the matrix representation of the operator;
 - `B :: Float64`, the magnetic field strength;
 - `B_dir :: Vector{Float64}`, the field direction (normalized);
 - `spin_quantization :: CoordinateFrame`, the spin quantization axis.
@@ -36,7 +36,7 @@ mutable struct MagneticFieldOperator{SPB} <: AbstractSPSSOperator{SPB}
     # the basis
     basis :: SPB
     # the current matrix representation (without prefactor)
-    matrix_rep :: SparseMatrixCSC{Complex{Float64}}
+    matrix_rep :: Matrix{Complex{Float64}}
     # the field strength
     B :: Float64
     # the field direction (normalized)
@@ -54,7 +54,7 @@ This function computes the matrix representation of the Magnetic Field Operator 
 function MagneticFieldOperator(basis::SPB, B::Vector{<:Real}) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     # construct new operator
     basis_internal = getT2GBasisLS()
-    op = MagneticFieldOperator{SPBasis{BasisStateLS}}(basis_internal, spzeros(Complex{Float64}, length(basis_internal), length(basis_internal)), norm(B), B./norm(B), CoordinateFrame())
+    op = MagneticFieldOperator{SPBasis{BasisStateLS}}(basis_internal, zeros(Complex{Float64}, length(basis_internal), length(basis_internal)), norm(B), B./norm(B), CoordinateFrame())
     # recalculate the matrix representation
     recalculate!(op)
     # build a projection operator around it
@@ -66,7 +66,7 @@ end
 function MagneticFieldOperator(basis::SPB, B::Real, B_dir::Vector{<:Real}=[0,0,1]) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     # construct new operator
     basis_internal = getT2GBasisLS()
-    op = MagneticFieldOperator{SPBasis{BasisStateLS}}(basis_internal, spzeros(Complex{Float64}, length(basis_internal), length(basis_internal)), B, B_dir./norm(B_dir), CoordinateFrame())
+    op = MagneticFieldOperator{SPBasis{BasisStateLS}}(basis_internal, zeros(Complex{Float64}, length(basis_internal), length(basis_internal)), B, B_dir./norm(B_dir), CoordinateFrame())
     # recalculate the matrix representation
     recalculate!(op)
     # build a projection operator around it
@@ -136,7 +136,7 @@ function basis(operator :: MagneticFieldOperator{SPB}) :: SPB where {SPSSBS<:Abs
 end
 
 # obtain the matrix representation
-function matrix_representation(operator :: MagneticFieldOperator{SPB}) :: SparseMatrixCSC{Complex{Float64}} where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
+function matrix_representation(operator :: MagneticFieldOperator{SPB}) :: Matrix{Complex{Float64}} where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     return operator.matrix_rep .* operator.B
 end
 
@@ -148,7 +148,7 @@ function recalculate!(operator :: MagneticFieldOperator{SPB}, recursive::Bool=tr
         operator.matrix_rep .*= 0.0
     else
         # create new matrix
-        operator.matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+        operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
     end
     # recalculate the matrix elements
     for alpha in 1:length(basis(operator))

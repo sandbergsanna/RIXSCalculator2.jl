@@ -285,6 +285,8 @@ function set_parameter_ujH(operator :: MPIH, u::Real, jH::Real) where {
     operator.jH = jH
     operator.u1 = u
     operator.u2 = u-2jH
+    # recalculate, but not recursive
+    recalculate!(operator, false)
 end
 # setting interaction parameter (U1, U2, J_H)
 function set_parameter_u1u2jH(operator :: MPIH, u1::Real, u2::Real, jH::Real) where {
@@ -296,12 +298,14 @@ function set_parameter_u1u2jH(operator :: MPIH, u1::Real, u2::Real, jH::Real) wh
     operator.jH = jH
     operator.u1 = u1
     operator.u2 = u2
+    # recalculate, but not recursive
+    recalculate!(operator, false)
 end
 
 
 
 # set parameter interface (returns (found parameter?, changed matrix?))
-function set_parameter!(operator :: MPIH, parameter :: Symbol, value; print_result::Bool=true, site::Union{Int64, Symbol}=-1, kwargs...) where {
+function set_parameter!(operator :: MPIH, parameter :: Symbol, value; print_result::Bool=true, recalculate::Bool=true, site::Union{Int64, Symbol}=-1, kwargs...) where {
             N, SPBS <: Union{SPMSBasisState{BasisStateXYZ}, BasisStateXYZ},
             MPB <: MPBasis{N,SPBS},
             MPIH <: AbstractMPInteractionHamiltonian{2,MPB}
@@ -310,33 +314,60 @@ function set_parameter!(operator :: MPIH, parameter :: Symbol, value; print_resu
     if site == operator.site || site == :all
         # check which parameter is adressed
         if parameter == :U
-            operator.u1 = value
-            operator.u2 = operator.u1-2*operator.jH
+            if recalculate && (operator.u1 != value || operator.u2 != operator.u1-2*operator.jH)
+                operator.u1 = value
+                operator.u2 = operator.u1-2*operator.jH
+                recalculate!(operator, true, false)
+            else
+                operator.u1 = value
+                operator.u2 = operator.u1-2*operator.jH
+            end
             if print_result
                 println("Parameter :$(parameter) found and (u1,u2) set to values ($(operator.u1),$(operator.u2))")
             end
             return (true, true)
         elseif parameter == :U1
-            operator.u1 = value
+            if recalculate && operator.u1 != value
+                operator.u1 = value
+                recalculate!(operator, true, false)
+            else
+                operator.u1 = value
+            end
             if print_result
                 println("Parameter :$(parameter) found and u1 set to value $(operator.u1)")
             end
             return (true, true)
         elseif parameter == :U2
-            operator.u2 = value
+            if recalculate && operator.u2 != value
+                operator.u2 = value
+                recalculate!(operator, true, false)
+            else
+                operator.u2 = value
+            end
             if print_result
                 println("Parameter :$(parameter) found and u2 set to value $(operator.u2)")
             end
             return (true, true)
         elseif parameter == :J_H
             if operator.u2 != operator.u1-2*operator.jH
-                operator.jH = value
+                if recalculate && operator.jH != value
+                    operator.jH = value
+                    recalculate!(operator, true, false)
+                else
+                    operator.jH = value
+                end
                 if print_result
                     println("Parameter :$(parameter) found and jH set to value $(operator.jH)")
                 end
             else
-                operator.jH = value
-                operator.u2 = operator.u1-2*operator.jH
+                if recalculate && (operator.jH != value || operator.u2 != operator.u1-2*operator.jH)
+                    operator.jH = value
+                    operator.u2 = operator.u1-2*operator.jH
+                    recalculate!(operator, true, false)
+                else
+                    operator.jH = value
+                    operator.u2 = operator.u1-2*operator.jH
+                end
                 if print_result
                     println("Parameter :$(parameter) found and (u2,jH) set to values ($(operator.u2),$(operator.jH))")
                 end

@@ -25,7 +25,7 @@ This object refers to the Crystal Distortion Operator.
 
 # Fields
 - `basis::SPB`, the single particle basis it refers to;
-- `matrix_rep :: SparseMatrixCSC{Complex{Float64}} `, its matrix representation;
+- `matrix_rep :: Matrix{Complex{Float64}} `, its matrix representation;
 - `Delta :: Float64`, the distortion strength;
 - `n :: Vector{Float64}`, the (normalized) distortion direction.
 """
@@ -33,7 +33,7 @@ mutable struct DistortionOperator{SPB} <: AbstractSPSSOperator{SPB}
     # the basis
     basis :: SPB
     # the current matrix representation (without prefactor)
-    matrix_rep :: SparseMatrixCSC{Complex{Float64}} 
+    matrix_rep :: Matrix{Complex{Float64}} 
     # the distortion strength
     Delta :: Float64
     # the distortion direction (normalized)
@@ -53,7 +53,7 @@ This function computes the matrix representation of the Crystal Distortion Opera
 function DistortionOperator(basis::SPB, Delta::Real, n::Vector{<:Real}=[0,0,1]) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     # construct new default basis
     basis_internal = getT2GBasisLS()
-    op = DistortionOperator{SPBasis{BasisStateLS}}(basis_internal, spzeros(Complex{Float64}, length(basis_internal), length(basis_internal)), Delta, n./norm(n))
+    op = DistortionOperator{SPBasis{BasisStateLS}}(basis_internal, zeros(Complex{Float64}, length(basis_internal), length(basis_internal)), Delta, n./norm(n))
     # recalculate the matrix representation
     recalculate!(op)
     # build a projection operator around it
@@ -63,7 +63,7 @@ function DistortionOperator(basis::SPB, Delta::Real, n::Vector{<:Real}=[0,0,1]) 
 end
 function DistortionOperator(basis::SPB, Delta::Real, n::Vector{<:Real}=[0,0,1]) where {SPB<:SPBasis{BasisStateLS}}
     # construct new operator
-    op = DistortionOperator{SPB}(basis, spzeros(Complex{Float64}, length(basis), length(basis)), Delta, n./norm(n))
+    op = DistortionOperator{SPB}(basis, zeros(Complex{Float64}, length(basis), length(basis)), Delta, n./norm(n))
     # recalculate the matrix representation
     recalculate!(op)
     # return the operator
@@ -110,7 +110,7 @@ function basis(operator :: DistortionOperator{SPB}) :: SPB where {SPSSBS<:Abstra
 end
 
 # obtain the matrix representation
-function matrix_representation(operator :: DistortionOperator{SPB}) :: SparseMatrixCSC{Complex{Float64}} where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
+function matrix_representation(operator :: DistortionOperator{SPB}) :: Matrix{Complex{Float64}} where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     return operator.matrix_rep .* operator.Delta
 end
 
@@ -122,7 +122,7 @@ function recalculate!(operator :: DistortionOperator{SPB}, recursive::Bool=true,
         operator.matrix_rep .*= 0.0
     else
         # create new matrix
-        operator.matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+        operator.matrix_rep = zeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
     end
     # recalculate the matrix elements
     for alpha in 1:length(basis(operator))
