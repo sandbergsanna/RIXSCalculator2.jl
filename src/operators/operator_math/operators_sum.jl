@@ -91,12 +91,10 @@ function matrix_representation(operator :: SumOperator{B, O1, O2}) :: SparseMatr
 end
 
 # possibly recalculate the matrix representation
-function recalculate!(operator :: SumOperator{B, O1, O2}, recursive::Bool=true, basis_change::Bool=true)  where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
-    # maybe recalculate recursively
-    if recursive
-        recalculate!(operator.op_1, true, basis_change)
-        recalculate!(operator.op_2, true, basis_change)
-    end
+function recalculate!(operator :: SumOperator{B, O1, O2}, basis_change::Bool=true)  where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O1<:AbstractOperator{B}, O2<:AbstractOperator{B}}
+    # recalculate contained operators
+    recalculate!(operator.op_1, basis_change)
+    recalculate!(operator.op_2, basis_change)
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))

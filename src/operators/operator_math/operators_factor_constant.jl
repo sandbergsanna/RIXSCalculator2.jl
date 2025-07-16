@@ -62,11 +62,9 @@ function matrix_representation(operator :: ScalarProductOperator{B, O}) :: Spars
 end
 
 # possibly recalculate the matrix representation
-function recalculate!(operator :: ScalarProductOperator{B, O}, recursive::Bool=true, basis_change::Bool=true) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O<:AbstractOperator{B}}
-    # maybe recalculate recursively
-    if recursive
-        recalculate!(operator.op, true, basis_change)
-    end
+function recalculate!(operator :: ScalarProductOperator{B, O}, basis_change::Bool=true) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O<:AbstractOperator{B}}
+        # recalculate contained operator
+        recalculate!(operator.op, basis_change)
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))

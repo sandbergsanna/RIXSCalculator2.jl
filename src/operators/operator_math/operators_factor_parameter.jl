@@ -69,11 +69,9 @@ function matrix_representation(operator :: SettableScalarProductOperator{B, O}) 
 end
 
 # possibly recalculate the matrix representation
-function recalculate!(operator :: SettableScalarProductOperator{B, O}, recursive::Bool=true, basis_change::Bool=true) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O<:AbstractOperator{B}}
-    # maybe recalculate recursively
-    if recursive
-        recalculate!(operator.op, true, basis_change)
-    end
+function recalculate!(operator :: SettableScalarProductOperator{B, O}, basis_change::Bool=true) where {BS<:AbstractBasisState, B<:AbstractBasis{BS}, O<:AbstractOperator{B}}
+    # recalculate conatined opeerator
+    recalculate!(operator.op, basis_change)
 end
 
 # set a parameter (returns (found parameter?, changed matrix?))

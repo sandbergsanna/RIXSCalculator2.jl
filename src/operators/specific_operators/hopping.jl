@@ -99,7 +99,7 @@ function matrix_representation(operator :: SPOrbitalHoppingOperator{SPMSB}) :: S
 end
 
 # possibly recalculate the matrix representation
-function recalculate!(operator :: SPOrbitalHoppingOperator{SPMSB}, recursive::Bool=true, basis_change::Bool=true) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}}
+function recalculate!(operator :: SPOrbitalHoppingOperator{SPMSB}, basis_change::Bool=true) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}}
     # create new matrix
     operator.matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
     # recalculate the matrix elements
@@ -123,7 +123,7 @@ function set_parameter!(operator :: SPOrbitalHoppingOperator{SPMSB}, parameter :
         else
             operator.hopping_strengths[parameter] = value
             if recalculate
-                recalculate!(operator, false, false)
+                recalculate!(operator,false)
                 if print_result
                     println("Parameter :$(parameter) found, value changed to $(value), also operator recalculated")
                 end

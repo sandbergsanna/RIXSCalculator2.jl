@@ -50,7 +50,7 @@ mutable struct SPSSProjectorOperator{
         # create a new operator
         op = new{SPSSBS_IN,SPSSBS_OUT, SPSSB_IN,SPSSB_OUT, SPO}(basis(operator), basis_to, operator, projector_matrix(basis(operator), basis_to))
         # recalculate the matrix representation
-        recalculate!(op, true)
+        recalculate!(op)
         # return the operator
         return op
     end
@@ -127,17 +127,15 @@ function matrix_representation(operator :: SPSSProjectorOperator{SPSSBS_IN,SPSSB
 end
 
 # possibly recalculate the matrix representation
-function recalculate!(operator :: SPSSProjectorOperator{SPSSBS_IN,SPSSBS_OUT, SPSSB_IN,SPSSB_OUT, SPO}, recursive::Bool=true, basis_change::Bool=true) where {
+function recalculate!(operator :: SPSSProjectorOperator{SPSSBS_IN,SPSSBS_OUT, SPSSB_IN,SPSSB_OUT, SPO}, basis_change::Bool=true) where {
             SPSSBS_IN  <: AbstractSPSSBasisState,
             SPSSBS_OUT <: AbstractSPSSBasisState,
             SPSSB_IN   <: SPBasis{SPSSBS_IN},
             SPSSB_OUT  <: SPBasis{SPSSBS_OUT},
             SPO <: AbstractSPSSOperator{SPSSB_IN}
         }
-    # maybe recalculate the inner operator
-    if recursive
-        recalculate!(operator.operator, recursive, basis_change)
-    end
+    # recalculate the inner operator
+    recalculate!(operator.operator, basis_change)
     # calculate new projector P_12
     if basis_change
         operator.projector_in_out = projector_matrix(operator.basis_in, operator.basis)
@@ -244,7 +242,7 @@ mutable struct SPMSProjectorOperator{
         # create a new operator
         op = new{SPMSB_IN,SPMSB_OUT, SPO}(basis(operator), basis_to, operator, projector_matrix(basis(operator), basis_to))
         # recalculate the matrix representation
-        recalculate!(op, true)
+        recalculate!(op)
         # return the operator
         return op
     end
@@ -313,15 +311,13 @@ function matrix_representation(operator :: SPMSProjectorOperator{SPMSB_IN,SPMSB_
 end
 
 # possibly recalculate the matrix representation
-function recalculate!(operator :: SPMSProjectorOperator{SPMSB_IN,SPMSB_OUT, SPO}, recursive::Bool=true, basis_change::Bool=true) where {
+function recalculate!(operator :: SPMSProjectorOperator{SPMSB_IN,SPMSB_OUT, SPO}, basis_change::Bool=true) where {
             SPMSB_IN   <: SPBasis{SPMSBS_IN} where {SPMSBS_IN<:Union{SPMSBasisState{BS} where BS, SPMSCompositeBasisState{B} where B}},
             SPMSB_OUT  <: SPBasis{SPMSBS_OUT} where {SPMSBS_OUT<:Union{SPMSBasisState{BS} where BS, SPMSCompositeBasisState{B} where B}},
             SPO <: AbstractSPMSOperator{SPMSB_IN}
         }
-    # maybe recalculate the inner operator
-    if recursive
-        recalculate!(operator.operator, recursive, basis_change)
-    end
+    # recalculate the inner operator
+    recalculate!(operator.operator, basis_change)
     # calculate new projector P_12
     if basis_change
         operator.projector_in_out = projector_matrix(operator.basis_in, operator.basis)
@@ -418,7 +414,7 @@ mutable struct MPProjectorOperator{
         # create a new operator
         op = new{N,NO, SPBS_IN,SPBS_OUT, MPB_IN,MPB_OUT, MPO}(basis(operator), basis_to, operator,projector_matrix(basis(operator), basis_to))
         # recalculate the matrix representation
-        recalculate!(op, true)
+        recalculate!(op)
         # return the operator
         return op
     end
@@ -499,7 +495,7 @@ function matrix_representation(operator :: MPProjectorOperator{N,NO, SPBS_IN,SPB
 end
 
 # possibly recalculate the matrix representation
-function recalculate!(operator :: MPProjectorOperator{N,NO, SPBS_IN,SPBS_OUT, MPB_IN,MPB_OUT, MPO}, recursive::Bool=true, basis_change::Bool=true) where {
+function recalculate!(operator :: MPProjectorOperator{N,NO, SPBS_IN,SPBS_OUT, MPB_IN,MPB_OUT, MPO}, basis_change::Bool=true) where {
             N, NO,
             SPBS_IN  <: AbstractSPBasisState,
             SPBS_OUT <: AbstractSPBasisState,
@@ -507,10 +503,8 @@ function recalculate!(operator :: MPProjectorOperator{N,NO, SPBS_IN,SPBS_OUT, MP
             MPB_OUT <: MPBasis{N,SPBS_OUT},
             MPO <: AbstractMPOperator{NO,MPB_IN}
         }
-    # maybe recalculate the inner operator
-    if recursive
-        recalculate!(operator.operator, recursive, basis_change)
-    end
+    # recalculate the inner operator
+    recalculate!(operator.operator, basis_change)
     # calculate new projector P_12
     if basis_change
         operator.projector_in_out = projector_matrix(operator.basis_in, operator.basis)
@@ -608,7 +602,7 @@ mutable struct GeneralProjectorOperator{
         # create a new operator
         op = new{AB_IN, AB_OUT, AO}(basis(operator), basis_to, operator,projector_matrix(basis(operator), basis_to))
         # recalculate the matrix representation
-        recalculate!(op, true)
+        recalculate!(op)
         # return the operator
         return op
     end
@@ -677,15 +671,13 @@ function matrix_representation(operator :: GeneralProjectorOperator{AB_IN, AB_OU
 end
 
 # possibly recalculate the matrix representation
-function recalculate!(operator :: GeneralProjectorOperator{AB_IN, AB_OUT, AO}, recursive::Bool=true, basis_change::Bool=true) where {
+function recalculate!(operator :: GeneralProjectorOperator{AB_IN, AB_OUT, AO}, basis_change::Bool=true) where {
             AB_IN  <: AbstractBasis,
             AB_OUT <: AbstractBasis,
             AO <: AbstractOperator{AB_IN}
         }
-    # maybe recalculate the inner operator
-    if recursive
-        recalculate!(operator.operator, recursive, basis_change)
-    end
+    # recalculate the inner operator
+    recalculate!(operator.operator, basis_change)
     # calculate new projector P_12
     if basis_change
         operator.projector_in_out = projector_matrix(operator.basis_in, operator.basis)

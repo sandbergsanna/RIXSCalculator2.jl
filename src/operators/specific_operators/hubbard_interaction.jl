@@ -82,7 +82,7 @@ mutable struct MPElectronPerkinsWoelfleHamiltonian{
         # construct new operator with those suboperators
         op = new{MPB}(basis, spzeros(Complex{Float64}, length(basis),length(basis)), site, u1,u2,jH, op_den_den_same_orb, op_den_den_same_spin, op_den_den_remainder, op_2p_sc_spin_cons, op_2p_sc_spin_flip)
         # let it recalculate
-        recalculate!(op, false)
+        recalculate!(op)
         # return it
         return op
     end
@@ -151,7 +151,7 @@ mutable struct MPHolePerkinsWoelfleHamiltonian{
         # construct new operator with those suboperators
         op = new{MPB}(basis, spzeros(Complex{Float64}, length(basis),length(basis)), site, u1,u2,jH, op_den_den_same_orb, op_den_den_same_spin, op_den_den_remainder, op_2p_sc_spin_cons, op_2p_sc_spin_flip)
         # let it recalculate
-        recalculate!(op, false)
+        recalculate!(op)
         # return it
         return op
     end
@@ -235,7 +235,7 @@ function matrix_representation(operator :: MPIH) :: SparseMatrixCSC{Complex{Floa
 end
 
 # possibly recalculate the matrix representation (ELECTRON & HOLE) (Fallback for non XYZ)
-function recalculate!(operator :: MPIH, recursive::Bool=true) where {
+function recalculate!(operator :: MPIH) where {
             N, SPBS <: AbstractSPBasisState,
             MPB <: MPBasis{N,SPBS},
             MPIH <: AbstractMPInteractionHamiltonian{2,MPB}
@@ -244,7 +244,7 @@ function recalculate!(operator :: MPIH, recursive::Bool=true) where {
 end
 
 # possibly recalculate the matrix representation (ELECTRON & HOLE)
-function recalculate!(operator :: MPIH, recursive::Bool=true, basis_change::Bool=true) where {
+function recalculate!(operator :: MPIH, basis_change::Bool=true) where {
             N, SPBS <: Union{SPMSBasisState{BasisStateXYZ}, BasisStateXYZ},
             MPB <: MPBasis{N,SPBS},
             MPIH <: AbstractMPInteractionHamiltonian{2,MPB}
@@ -255,14 +255,6 @@ function recalculate!(operator :: MPIH, recursive::Bool=true, basis_change::Bool
     operator.op_den_den_remainder.prefactor = operator.u2
     operator.op_2p_sc_spin_cons.prefactor   = operator.jH
     operator.op_2p_sc_spin_flip.prefactor   = -operator.jH
-    # maybe recalculate recursively
-    if recursive
-        recalculate!(operator.op_den_den_same_orb)
-        recalculate!(operator.op_den_den_same_spin)
-        recalculate!(operator.op_den_den_remainder)
-        recalculate!(operator.op_2p_sc_spin_cons)
-        recalculate!(operator.op_2p_sc_spin_flip)
-    end
     # create new matrix by summing all contributions of suboperators
     operator.matrix_rep =
         matrix_representation(operator.op_den_den_same_orb)  .+
@@ -285,8 +277,8 @@ function set_parameter_ujH(operator :: MPIH, u::Real, jH::Real) where {
     operator.jH = jH
     operator.u1 = u
     operator.u2 = u-2jH
-    # recalculate, but not recursive
-    recalculate!(operator, false)
+    # recalculate
+    recalculate!(operator)
 end
 # setting interaction parameter (U1, U2, J_H)
 function set_parameter_u1u2jH(operator :: MPIH, u1::Real, u2::Real, jH::Real) where {
@@ -298,8 +290,8 @@ function set_parameter_u1u2jH(operator :: MPIH, u1::Real, u2::Real, jH::Real) wh
     operator.jH = jH
     operator.u1 = u1
     operator.u2 = u2
-    # recalculate, but not recursive
-    recalculate!(operator, false)
+    # recalculate
+    recalculate!(operator)
 end
 
 
@@ -317,7 +309,7 @@ function set_parameter!(operator :: MPIH, parameter :: Symbol, value; print_resu
             if recalculate && (operator.u1 != value || operator.u2 != operator.u1-2*operator.jH)
                 operator.u1 = value
                 operator.u2 = operator.u1-2*operator.jH
-                recalculate!(operator, true, false)
+                recalculate!(operator, false)
             else
                 operator.u1 = value
                 operator.u2 = operator.u1-2*operator.jH
@@ -329,7 +321,7 @@ function set_parameter!(operator :: MPIH, parameter :: Symbol, value; print_resu
         elseif parameter == :U1
             if recalculate && operator.u1 != value
                 operator.u1 = value
-                recalculate!(operator, true, false)
+                recalculate!(operator, false)
             else
                 operator.u1 = value
             end
@@ -340,7 +332,7 @@ function set_parameter!(operator :: MPIH, parameter :: Symbol, value; print_resu
         elseif parameter == :U2
             if recalculate && operator.u2 != value
                 operator.u2 = value
-                recalculate!(operator, true, false)
+                recalculate!(operator, false)
             else
                 operator.u2 = value
             end
@@ -352,7 +344,7 @@ function set_parameter!(operator :: MPIH, parameter :: Symbol, value; print_resu
             if operator.u2 != operator.u1-2*operator.jH
                 if recalculate && operator.jH != value
                     operator.jH = value
-                    recalculate!(operator, true, false)
+                    recalculate!(operator, false)
                 else
                     operator.jH = value
                 end
@@ -363,7 +355,7 @@ function set_parameter!(operator :: MPIH, parameter :: Symbol, value; print_resu
                 if recalculate && (operator.jH != value || operator.u2 != operator.u1-2*operator.jH)
                     operator.jH = value
                     operator.u2 = operator.u1-2*operator.jH
-                    recalculate!(operator, true, false)
+                    recalculate!(operator, false)
                 else
                     operator.jH = value
                     operator.u2 = operator.u1-2*operator.jH

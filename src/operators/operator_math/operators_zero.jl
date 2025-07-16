@@ -75,7 +75,7 @@ function matrix_representation(operator :: ZeroOperator{B}) :: SparseMatrixCSC{C
 end
 
 # possibly recalculate the matrix representation (does nothing)
-function recalculate!(operator :: ZeroOperator{B}, recursive::Bool=true, basis_change::Bool=true)  where {BS<:AbstractBasisState, B<:AbstractBasis{BS}}
+function recalculate!(operator :: ZeroOperator{B}, basis_change::Bool=true)  where {BS<:AbstractBasisState, B<:AbstractBasis{BS}}
     return nothing
 end
 

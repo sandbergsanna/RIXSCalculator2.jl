@@ -141,7 +141,7 @@ function matrix_representation(operator :: MagneticFieldOperator{SPB}) :: Matrix
 end
 
 # possibly recalculate the matrix representation
-function recalculate!(operator :: MagneticFieldOperator{SPB}, recursive::Bool=true, basis_change::Bool=true) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
+function recalculate!(operator :: MagneticFieldOperator{SPB}, basis_change::Bool=true) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     # check if the size of matrix is still okay
     if size(operator.matrix_rep,1) == length(basis(operator)) && size(operator.matrix_rep,2) == length(basis(operator))
         # size is okay, multiply matrix by 0 to erase all elements

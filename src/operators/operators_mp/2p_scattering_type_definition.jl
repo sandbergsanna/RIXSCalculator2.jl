@@ -133,7 +133,7 @@ function matrix_representation(operator :: MPDDOP) :: SparseMatrixCSC{Complex{Fl
 end
 
 # possibly recalculate the matrix representation (ELECTRON & HOLE) (Fallback for non XYZ)
-function recalculate!(operator :: MPDDOP, recursive::Bool=true, basis_change::Bool=true) where {
+function recalculate!(operator :: MPDDOP, basis_change::Bool=true) where {
             N, SPBS <: AbstractSPBasisState,
             MPB <: MPBasis{N,SPBS},
             MPDDOP <: AbstractMP2PScatteringOperator{MPB}
@@ -142,7 +142,7 @@ function recalculate!(operator :: MPDDOP, recursive::Bool=true, basis_change::Bo
 end
 
 # possibly recalculate the matrix representation (ELECTRON & HOLE)
-function recalculate!(operator :: MPDDOP, recursive::Bool=true, basis_change::Bool=true) where {
+function recalculate!(operator :: MPDDOP, basis_change::Bool=true) where {
             N, SPBS <: Union{SPMSBasisState{BasisStateXYZ}, BasisStateXYZ},
             MPB <: MPBasis{N,SPBS},
             MPDDOP <: AbstractMP2PScatteringOperator{MPB}
