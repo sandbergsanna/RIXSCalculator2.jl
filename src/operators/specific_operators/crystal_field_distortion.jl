@@ -159,13 +159,8 @@ function set_parameter!(operator :: DistortionOperator{SPB}, parameter :: Symbol
         end
         return (true, true)
     elseif parameter == :Delta
-        # includes Prefactor
-        if recalculate && operator.Delta != value
-            operator.Delta = value
-            recalculate!(operator)
-        else
-            operator.Delta = value
-        end
+        # set Prefactor (recalculate matrix rep not needed as prefactor is saved separately)
+        operator.Delta = value
         # print
         if print_result
             println("Parameter :$(parameter) found and set to value $(value)")

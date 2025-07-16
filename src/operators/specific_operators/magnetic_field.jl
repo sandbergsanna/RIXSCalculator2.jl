@@ -179,13 +179,8 @@ function set_parameter!(operator :: MagneticFieldOperator{SPB}, parameter :: Sym
                 println("Parameter :$(parameter) found and set to value $(operator.B) with direction $(operator.B_dir)")
             end
         elseif typeof(value) <: Real
-            # does not include direction
-            if recalculate && operator.B != norm(value)
+            # does not include direction (recalculate matrix rep not needed as prefactor is saved separately)
                 operator.B = norm(value)
-                recalculate!(operator)
-            else
-                operator.B = norm(value)
-            end
             # print
             if print_result
                 println("Parameter :$(parameter) found and set to value $(operator.B)")

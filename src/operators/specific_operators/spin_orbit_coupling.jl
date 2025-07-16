@@ -134,12 +134,9 @@ end
 function set_parameter!(operator :: SpinOrbitOperator{SPB}, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, kwargs...) where {SPSSBS<:AbstractSPSSBasisState, SPB<:SPBasis{SPSSBS}}
     # check if parameter can be set
     if parameter == :lambda
-        if recalculate && operator.lambda != value
-            operator.lambda = value
-            recalculate!(operator)
-        else
-            operator.lambda = value
-        end
+        # set lambda (recalculate matrix rep not needed since prefactor is saved seperately)
+        operator.lambda = value
+        # maybe print result
         if print_result
             println("Parameter :$(parameter) found and set to value $(operator.lambda)")
         end
@@ -152,6 +149,7 @@ function set_parameter!(operator :: SpinOrbitOperator{SPB}, parameter :: Symbol,
             catch Exception
                 @error "recognized parameter :$(parameter) but the type is not matching CoordinateFrame: $(typeof(value))" stacktrace()
             end
+            # recalculate
             recalculate!(operator)
         else
             try

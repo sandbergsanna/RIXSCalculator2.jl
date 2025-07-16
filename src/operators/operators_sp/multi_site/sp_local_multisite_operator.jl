@@ -119,9 +119,6 @@ function set_parameter!(operator :: SPLocalMSOperator{SPSSBS, SPMSB, SPO}, param
     # pass on to containing operator
     if site == operator.site || site == :all
         found_param, changed_matrix = set_parameter!(operator.operator, parameter, value, print_result=print_result, recalculate=recalculate; kwargs...)
-        if recalculate && changed_matrix
-            recalculate!(operator, false, false)
-        end
         return (found_param, changed_matrix)
     else
         if print_result
