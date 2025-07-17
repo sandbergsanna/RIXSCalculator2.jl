@@ -43,12 +43,14 @@ function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false)
             end
             if lab.dipoles_ver[s].edge != lab.edge
                 lab.dipoles_ver[s].edge = lab.edge
+                recalculate!(lab.dipoles_ver[s], true)
             end
             if lab.dipoles_hor[s].edge != lab.edge
                 lab.dipoles_hor[s].edge = lab.edge
+                recalculate!(lab.dipoles_hor[s], true)
             end
         end
-        # build sums of diple operators
+        # build sums of dipole operators
         N = length(basis(lab.hamiltonian)[1].occupation)
         basis_dipole = getMultiParticleBasis(getMultiSiteBasis(getT2GBasisXYZ(), length(lab.sites)), N)
         lab.dipole_hor = ProjectorOperator( sum([
@@ -77,7 +79,7 @@ function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false)
             site_eps_out_h = get_in_inner_coordinates(lab.sites[s], get_in_inner_coordinates(lab.sample, lab.epsilon_out_hor))
             site_eps_out_v = get_in_inner_coordinates(lab.sites[s], get_in_inner_coordinates(lab.sample, lab.epsilon_out_ver))
             site_position  = lab.sites[s].position
-            # update diple operators
+            # update dipole operators
             lab.dipoles_hor[s].position = site_position
             lab.dipoles_hor[s].eps_in   = site_eps_in
             lab.dipoles_hor[s].eps_out  = site_eps_out_h
@@ -99,29 +101,35 @@ function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false)
             end
             if lab.dipoles_ver[s].edge != lab.edge
                 lab.dipoles_ver[s].edge = lab.edge
+                recalculate!(lab.dipoles_ver[s], true)
             end
             if lab.dipoles_hor[s].edge != lab.edge
                 lab.dipoles_hor[s].edge = lab.edge
+                recalculate!(lab.dipoles_hor[s], true)
             end
         end
     end
+    # recalculate the dipole operator
+    recalculate!(lab.dipole_hor, false)
+    recalculate!(lab.dipole_ver, false)
 end
 
-# rediagonalize the hamiltonian
-function rediagonalize_hamiltonian!(ls :: LabSystem)
-    # rediagonalize
-    ls.eigensys = eigensystem(ls.hamiltonian)
+# recalculate the hamiltonian
+function recalculate_hamiltonian!(ls :: LabSystem, basis_change::Bool=true, rediagonalize::Bool=true)
+    # recalculate hamiltonian
+    recalculate!(ls.hamiltonian, basis_change)
+    # maybe rediagonalize
+    if rediagonalize
+        ls.eigensys = eigensystem(ls.hamiltonian)
+    end
 end
 
-# possibly recalculate the matrix representation for the dipole operators
-# possibly rediagonalize the hamiltonian
-function recalculate!(ls :: LabSystem; basis_change::Bool=true, rediagonalize::Bool=true)
+# possibly recalculate the matrix representation
+function recalculate!(ls :: LabSystem, basis_change::Bool=true, rediagonalize::Bool=true)
     # maybe recalculate dipole operators
     recalculate_dipole_operators!(ls, new_objects=basis_change)
-    # maybe rediagonalize hamiltonian
-    if rediagonalize
-        rediagonalize_hamiltonian!(ls)
-    end
+    # recalculate hamiltonian
+    recalculate_hamiltonian!(ls, basis_change, rediagonalize)
 end
 
 
@@ -191,7 +199,7 @@ end
 
 
 # set a parameter (returns (found parameter?, changed matrix?))
-function set_parameter!(ls :: LabSystem, parameter :: Symbol, value; print_result::Bool=false, site=:all, relative_to::Symbol=:sample, rediagonalize::Bool=true, kwargs...)
+function set_parameter!(ls :: LabSystem, parameter :: Symbol, value; print_result::Bool=false, recalculate::Bool=true, site=:all, relative_to::Symbol=:sample, rediagonalize::Bool=true, kwargs...)
     # check if it can be set in 1
     if site == :all
         # define dfault parameters
@@ -199,13 +207,13 @@ function set_parameter!(ls :: LabSystem, parameter :: Symbol, value; print_resul
         # go through all sites
         for s in 1:length(ls.sites)
             # set the value on site s
-            found_param_s, changed_matrix_s = set_parameter!(ls, parameter, value; print_result=print_result, site=s, relative_to=relative_to, kwargs...)
+            found_param_s, changed_matrix_s = set_parameter!(ls, parameter, value; print_result=print_result, recalculate=false, site=s, relative_to=relative_to, kwargs...)
             # process parameters
             found_param_s, changed_matrix_s = (found_param || found_param_s), (changed_matrix || changed_matrix_s)
         end
-        # maybe rediagonalize hamiltonian
-        if found_param && rediagonalize
-            rediagonalize_hamiltonian!(ls)
+        # maybe recalculate
+        if recalculate
+            recalculate_hamiltonian!(ls, false, found_param && rediagonalize)
         end
         # return
         return (found_param, changed_matrix)
@@ -225,10 +233,10 @@ function set_parameter!(ls :: LabSystem, parameter :: Symbol, value; print_resul
             end
         end
         # set parameter
-        found_param, changed_matrix = set_parameter!(ls.hamiltonian, parameter, value, print_result=print_result; site=site, kwargs...)
+        found_param, changed_matrix = set_parameter!(ls.hamiltonian, parameter, value, print_result=print_result, recalculate=recalculate; site=site, kwargs...)
         return (found_param, changed_matrix)
     else
-        error("specify a corret site: $(site)")
+        error("specify a correct site: $(site)")
     end
 end
 

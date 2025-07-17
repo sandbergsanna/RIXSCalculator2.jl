@@ -84,7 +84,7 @@ function LabSystem(hamiltonian :: AbstractOperator)
         [1,0,1]
     )
     recalculate_dipole_operators!(ls, new_objects=true)
-    rediagonalize_hamiltonian!(ls)
+    recalculate_hamiltonian!(ls, true, true)
     return ls
 end
 export LabSystem
