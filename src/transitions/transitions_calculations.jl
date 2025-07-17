@@ -8,26 +8,51 @@
 # Calculate the dipole amplitude when transitioning from -> D -> to
 # which corresponds to <to|D|from>
 function get_amplitude(
-        dipole_operator :: AbstractOperator{B},
+        dipole_matrix :: Matrix{Complex{Float64}},
         state_from :: Vector{<:Number},
         state_to   :: Vector{<:Number}
     ) ::Complex{Float64} where {B <: AbstractBasis}
 
     # build amplitude like <to|D|from>
-    return dot(state_to,  matrix_representation(dipole_operator) * state_from)
+    return dot(state_to,  dipole_matrix * state_from)
+end
+
+# Calculate the dipole amplitude when transitioning from -> D -> to
+# which corresponds to <to|D|from>
+function get_amplitude(
+        dipole_matrix :: SparseMatrixCSC{Complex{Float64}},
+        state_from :: Vector{<:Number},
+        state_to   :: Vector{<:Number}
+    ) ::Complex{Float64} where {B <: AbstractBasis}
+
+    # build amplitude like <to|D|from>
+    return dot(state_to,  dipole_matrix * state_from)
 end
 
 # Calculate the dipole amplitude when transitioning i_from -> D -> i_to
 # which corresponds to <i_to|D|i_from>
 function get_amplitude(
         eigensys        :: Dict{Symbol, Any},
-        dipole_operator :: AbstractOperator{B},
+        dipole_matrix :: Matrix{Complex{Float64}},
         i_from :: Int64,
         i_to   :: Int64
     ) ::Complex{Float64} where {B <: AbstractBasis}
 
     # build amplitude like <to|D|from>
-    return get_amplitude(dipole_operator, eigensys[:vectors][i_from], eigensys[:vectors][i_to])
+    return get_amplitude(dipole_matrix , eigensys[:vectors][i_from], eigensys[:vectors][i_to])
+end
+
+# Calculate the dipole amplitude when transitioning i_from -> D -> i_to
+# which corresponds to <i_to|D|i_from>
+function get_amplitude(
+        eigensys        :: Dict{Symbol, Any},
+        dipole_matrix :: SparseMatrixCSC{Complex{Float64}},
+        i_from :: Int64,
+        i_to   :: Int64
+    ) ::Complex{Float64} where {B <: AbstractBasis}
+
+    # build amplitude like <to|D|from>
+    return get_amplitude(dipole_matrix , eigensys[:vectors][i_from], eigensys[:vectors][i_to])
 end
 export get_amplitude
 
@@ -45,10 +70,13 @@ function get_spectrum(
     # allocate the transitions
     transitions = Vector{Transition}(undef, length(eigensys[:values]))
 
+    # get dipole matrix
+    dipole_matrix=matrix_representation(dipole_operator)
+
     # fill all transitionss
     for i in 1:length(transitions)
         transitions[i] = Transition(
-            abs( get_amplitude(eigensys, dipole_operator, 1, i) )^2,
+            abs( get_amplitude(eigensys, dipole_matrix, 1, i) )^2,
             linewidth,
             eigensys[:values][i] - eigensys[:values][1]
         )
@@ -66,6 +94,9 @@ function get_spectrum(
         ;
         linewidth :: Real = 25.0
     ) :: Spectrum where {B <: AbstractBasis}
+    
+    # get dipole matrix
+    dipole_matrix=matrix_representation(dipole_operator)
 
     return sum([
         begin
@@ -75,7 +106,7 @@ function get_spectrum(
             # fill all transitionss
             for i in 1:length(transitions)
                 transitions[i] = Transition(
-                    (1.0 ./ length(states)) * abs( dot(eigensys[:vectors][i],  matrix_representation(dipole_operator) * eigensys[:vectors][j]) )^2,
+                    (1.0 ./ length(states)) * abs( dot(eigensys[:vectors][i],  dipole_matrix * eigensys[:vectors][j]) )^2,
                     linewidth,
                     eigensys[:values][i] - eigensys[:values][j]
                 )
