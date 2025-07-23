@@ -49,8 +49,6 @@ mutable struct SPSSProjectorOperator{
             }
         # create a new operator
         op = new{SPSSBS_IN,SPSSBS_OUT, SPSSB_IN,SPSSB_OUT, SPO}(basis(operator), basis_to, operator, projector_matrix(basis(operator), basis_to))
-        # recalculate the matrix representation
-        recalculate!(op)
         # return the operator
         return op
     end
@@ -241,8 +239,6 @@ mutable struct SPMSProjectorOperator{
             }
         # create a new operator
         op = new{SPMSB_IN,SPMSB_OUT, SPO}(basis(operator), basis_to, operator, projector_matrix(basis(operator), basis_to))
-        # recalculate the matrix representation
-        recalculate!(op)
         # return the operator
         return op
     end
@@ -413,8 +409,6 @@ mutable struct MPProjectorOperator{
             }
         # create a new operator
         op = new{N,NO, SPBS_IN,SPBS_OUT, MPB_IN,MPB_OUT, MPO}(basis(operator), basis_to, operator,projector_matrix(basis(operator), basis_to))
-        # recalculate the matrix representation
-        recalculate!(op)
         # return the operator
         return op
     end
@@ -601,8 +595,6 @@ mutable struct GeneralProjectorOperator{
             }
         # create a new operator
         op = new{AB_IN, AB_OUT, AO}(basis(operator), basis_to, operator,projector_matrix(basis(operator), basis_to))
-        # recalculate the matrix representation
-        recalculate!(op)
         # return the operator
         return op
     end
