@@ -147,3 +147,24 @@ function is_on_site(
 end
 export is_on_site
 
+#Function that returns the indices of the eigenstates (as sorted in eigensystem) of multiplets.
+#Input: eigensystem, digits_energy (optional) Output: vector of unique energies, corresponding multiplet indices
+function multiplets(eigensystem :: Dict; digits_energy::Int64=6)
+    # Energies and eigenvalues (already sorted)
+    evals=round.(eigensystem[:values],digits=digits_energy)
+    # Check unique energies
+    evals_unique=unique(evals)
+    # Check degeneracies and group into multiplets
+    multiplet_indices=[Vector{Int64}() for _ in 1:length(evals_unique)]
+    for i in 1:length(evals_unique)
+        for j in 1:length(evals)
+            if evals[j]==evals_unique[i]
+                push!(multiplet_indices[i],j)
+            end
+        end
+    end
+    # Return unique energies and indices of corresponding multiplets
+    return evals_unique,multiplet_indices
+end
+export multiplets
+
