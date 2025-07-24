@@ -158,22 +158,6 @@ end
 ################################################################################################################################
 
 
-# obtaining a spectrum
-function get_spectrum(
-            ls :: LabSystem,
-            args...
-            ;
-            kwargs...
-        ) :: Spectrum where {B <: AbstractBasis}
-
-    # construct spectrum
-    return get_spectrum(ls.eigensys, ls.dipole_hor, args...; kwargs...) + get_spectrum(ls.eigensys, ls.dipole_ver, args...; kwargs...)
-end
-
-
-
-
-
 function get_dq_eps(line :: AbstractString; factor :: Real = 1.0)
     parts = split(line, "\t")
     return (
