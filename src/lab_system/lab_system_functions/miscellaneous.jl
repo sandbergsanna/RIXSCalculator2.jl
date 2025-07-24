@@ -33,21 +33,13 @@ function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false)
                         q_out   = site_q_out
                     )
             if lab.spin_quantization == :local
-                lab.dipoles_hor[s].spin_quantization = CoordinateFrame()
-                lab.dipoles_ver[s].spin_quantization = CoordinateFrame()
+                lab.dipoles_hor[s].spin_quantization = CoordinateFrame()  
+                lab.dipoles_ver[s].spin_quantization = CoordinateFrame()  
             elseif lab.spin_quantization == :sample
                 lab.dipoles_hor[s].spin_quantization = lab.sites[s]
                 lab.dipoles_ver[s].spin_quantization = lab.sites[s]
             else
                 error("Unknown spin quantization axis "*string(lab.spin_quantization))
-            end
-            if lab.dipoles_ver[s].edge != lab.edge
-                lab.dipoles_ver[s].edge = lab.edge
-                recalculate!(lab.dipoles_ver[s], true)
-            end
-            if lab.dipoles_hor[s].edge != lab.edge
-                lab.dipoles_hor[s].edge = lab.edge
-                recalculate!(lab.dipoles_hor[s], true)
             end
         end
         # build sums of dipole operators
