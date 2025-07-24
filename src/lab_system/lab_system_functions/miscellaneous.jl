@@ -1,5 +1,5 @@
 # recalculation of dipole operator
-function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false)
+function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false, print_info::Bool=false)
     # check if new objects necessary
     if new_objects
         # new site dipole operators
@@ -45,22 +45,47 @@ function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false)
         # build sums of dipole operators
         N = length(basis(lab.hamiltonian)[1].occupation)
         basis_dipole = getMultiParticleBasis(getMultiSiteBasis(getT2GBasisXYZ(), length(lab.sites)), N)
-        lab.dipole_hor = ProjectorOperator( sum([
-            MPGeneralizedSPOperator(
-                basis_dipole,
-                ProjectorOperator(
-                    dh, basis_dipole.single_particle_basis
+        if basis(lab.hamiltonian).single_particle_basis == basis_dipole.single_particle_basis
+            # Create sum of dipole operators
+            lab.dipole_hor = sum([
+                MPGeneralizedSPOperator(
+                    basis_dipole,
+                    ProjectorOperator(
+                        dh, basis_dipole.single_particle_basis
+                    )
                 )
-            )
-            for dh in lab.dipoles_hor  ]), basis(lab.hamiltonian))
-        lab.dipole_ver = ProjectorOperator( sum([
-            MPGeneralizedSPOperator(
-                basis_dipole,
-                ProjectorOperator(
-                    dv, basis_dipole.single_particle_basis
+                for dh in lab.dipoles_hor  ])
+            lab.dipole_ver = sum([
+                MPGeneralizedSPOperator(
+                    basis_dipole,
+                    ProjectorOperator(
+                        dv, basis_dipole.single_particle_basis
+                    )
                 )
-            )
-            for dv in lab.dipoles_ver  ]), basis(lab.hamiltonian))
+                for dv in lab.dipoles_ver  ])
+        else
+            # maybe print info
+            if print_info
+                println("Note: Creating and recalculating LabSystem is faster if Hamiltonian is in the XYZ basis!")
+            end
+            # Create sum of dipole operators and project to the basis of the hamiltonian
+            lab.dipole_hor = ProjectorOperator( sum([
+                MPGeneralizedSPOperator(
+                    basis_dipole,
+                    ProjectorOperator(
+                        dh, basis_dipole.single_particle_basis
+                    )
+                )
+                for dh in lab.dipoles_hor  ]), basis(lab.hamiltonian))
+            lab.dipole_ver = ProjectorOperator( sum([
+                MPGeneralizedSPOperator(
+                    basis_dipole,
+                    ProjectorOperator(
+                        dv, basis_dipole.single_particle_basis
+                    )
+                )
+                for dv in lab.dipoles_ver  ]), basis(lab.hamiltonian))
+        end
     else
         # update the dipole operators
         for s in 1:length(lab.sites)
@@ -107,7 +132,7 @@ function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false)
 end
 
 # recalculate the hamiltonian
-function recalculate_hamiltonian!(ls :: LabSystem, basis_change::Bool=true, rediagonalize::Bool=true)
+function recalculate_hamiltonian!(ls :: LabSystem; basis_change::Bool=true, rediagonalize::Bool=true)
     # recalculate hamiltonian
     recalculate!(ls.hamiltonian, basis_change)
     # maybe rediagonalize
@@ -117,11 +142,11 @@ function recalculate_hamiltonian!(ls :: LabSystem, basis_change::Bool=true, redi
 end
 
 # possibly recalculate the matrix representation
-function recalculate!(ls :: LabSystem, basis_change::Bool=true, rediagonalize::Bool=true)
+function recalculate!(ls :: LabSystem; basis_change::Bool=true, rediagonalize::Bool=true)
     # maybe recalculate dipole operators
     recalculate_dipole_operators!(ls, new_objects=basis_change)
     # recalculate hamiltonian
-    recalculate_hamiltonian!(ls, basis_change, rediagonalize)
+    recalculate_hamiltonian!(ls, basis_change=basis_change, rediagonalize=rediagonalize)
 end
 
 
