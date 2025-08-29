@@ -214,7 +214,7 @@ function set_parameter!(ls :: LabSystem, parameter :: Symbol, value; print_resul
         end
         # maybe recalculate
         if recalculate
-            recalculate_hamiltonian!(ls, false, found_param && rediagonalize)
+            recalculate_hamiltonian!(ls, basis_change=false, rediagonalize=found_param && rediagonalize)
         end
         # return
         return (found_param, changed_matrix)
