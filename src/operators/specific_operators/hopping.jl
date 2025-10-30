@@ -69,10 +69,10 @@ end
 import Base.show
 function Base.show(io::IO, op::SPOrbitalHoppingOperator{SPMSB}) where {SPSSBS <: AbstractSPSSBasisState, SPMSBS <: SPMSBasisState{SPSSBS}, SPMSB <: SPBasis{SPMSBS}}
     if haskey(io, :compact)
-        print(io, "orbital hopping operator (", length(op.hopping_processes), " hopping elements, couplings ", keys(op.hopping_strengths), ") ")
+        print(io, "orbital hopping operator (", length(op.hopping_processes), " hopping elements, couplings ", string.((t for t in op.hopping_strengths)), ") ")
     else
         print(io, "Orbital hopping operator\n")
-        print(io, length(op.hopping_processes), " hopping elements, couplings ", string.(keys(op.hopping_strengths)), "\n")
+        print(io, length(op.hopping_processes), " hopping elements, couplings ", string.((t for t in op.hopping_strengths)), "\n")
         for h in op.hopping_processes
             print(io, "  - ", summary(basis(op)[h[1]]), " --> ", summary(basis(op)[h[2]]), ", :", string(h[3]), " = ", op.hopping_strengths[h[3]] , "\n")
         end
