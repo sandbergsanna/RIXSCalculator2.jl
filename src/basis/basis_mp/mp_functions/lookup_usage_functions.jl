@@ -2,13 +2,15 @@
 function resetLookupIndex!(basis :: MPBasis{N,SPBS}) where {N,SPBS<:AbstractSPBasisState}
     # set a new dictonary
     basis.lookup_index = Dict{Vector{Int64}, Tuple{Int64,Int64}}()
-    # use the index function on all basis states
-    @simd for bs in basis
-        # remove index
-        bs.basis_index = -1
-        bs.basis_sign  =  0
-        # recalculate index
-        index_and_sign!(basis, bs)
+    sizehint!(basis.lookup_index, length(basis)) # reserve capacity for n=length(basis) elements in lookup_index
+    # The sign is always +1 here since these states are already stored in
+    # their own canonical (sorted-occupation) form.
+    for (i, bs) in enumerate(basis)
+        # assign index
+        bs.basis_index = i
+        bs.basis_sign  = 1
+        # save index to lookup_index
+        basis.lookup_index[copy(bs.occupation)] = (1, i)
     end
 end
 # resetting the SP state lookup
