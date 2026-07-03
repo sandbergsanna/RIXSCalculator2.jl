@@ -71,10 +71,12 @@ function matrix_representation(operator :: MPGeneralizedSPOperator{SPBS, MPB, SP
     }
     # get matrix representation
     matrix_rep_sp = matrix_representation(operator.operator)
-    # get the important matrix elements
-    relevant_sp = map(x->abs(x)>1e-8, matrix_rep_sp)
-    # create new matrix
-    matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
+    # dimension of the many-particle basis
+    D = length(basis(operator))
+    # collect (row, col, value) triplets (instead of writing into the sparse matrix one entry at a time)
+    Is = Int[]
+    Js = Int[]
+    exp_vals = Complex{Float64}[]
     # allocate a buffer state
     state_buffer = deepcopy(basis(operator)[1])
     state_buffer.basis_index = -1
@@ -82,27 +84,30 @@ function matrix_representation(operator :: MPGeneralizedSPOperator{SPBS, MPB, SP
     # calculate the own matrix elements
     for a in 1:length(operator.basis.single_particle_basis)
     for b in 1:length(operator.basis.single_particle_basis)
-        # check if relevant
-        if !relevant_sp[a,b]
-            continue
-        end
         # get the element of the single particle hamiltonian
         op_sp_ab = matrix_rep_sp[a,b]
+        # check if nonzero, else continue to next iteration
+        if abs(op_sp_ab) <= 1e-8
+            continue
+        end
         # generate all element contributions to the many body hamiltonian
         for alpha in basis(operator).lookup_sp_states[a]
         for beta  in basis(operator).lookup_sp_states[b]
             # add the expectation with ab to the matrix
-            #= exp_ca_2 = expectation_value_ca!(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta], state_buffer)
-            exp_ca_1 = expectation_value_ca(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta])
-            if abs(exp_ca_1 - exp_ca_2) > 1e-10
-                println("ERROR: <$(alpha)| $(a) $(b) |$(beta)> gives $(exp_ca_1) vs. $(exp_ca_2)")
-            end =#
-            matrix_rep[alpha, beta] += expectation_value_ca!(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta], state_buffer) * op_sp_ab
-            #operator.matrix_rep[alpha, beta] += expectation_value_ca(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta]) * op_sp_ab
+            exp = expectation_value_ca!(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta], state_buffer) * op_sp_ab
+            # skip exact zeros so we don't store them as structural nonzeros
+            if exp != 0
+                push!(Is, alpha)
+                push!(Js, beta)
+                push!(exp_vals, exp)
+            end
         end
         end
     end
     end
+    # build the sparse matrix in one pass; combine=+ sums any duplicate
+    # (alpha,beta) entries that arose from different (a,b) contributions
+    matrix_rep = sparse(Is, Js, exp_vals, D, D, +)
     #return matrix representation
     return matrix_rep
 end
