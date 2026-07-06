@@ -75,11 +75,9 @@ function matrix_representation(operator :: MPGeneralizedSPOperator{SPBS, MPB, SP
     relevant_sp = map(x->abs(x)>1e-8, matrix_rep_sp)
     # create new matrix
     matrix_rep = spzeros(Complex{Float64}, length(basis(operator)), length(basis(operator)))
-    # allocate a buffer state
-    state_buffer = deepcopy(basis(operator)[1])
-    state_buffer.basis_index = -1
-    state_buffer.basis_sign  = 0
-    # calculate the own matrix elements
+    # reusable buffer for the occupation vector -- avoids one allocation per inner-loop iteration
+    occ_buffer = Vector{Int64}(undef, N)
+    # calculate the matrix elements
     for a in 1:length(operator.basis.single_particle_basis)
     for b in 1:length(operator.basis.single_particle_basis)
         # check if relevant
@@ -88,18 +86,43 @@ function matrix_representation(operator :: MPGeneralizedSPOperator{SPBS, MPB, SP
         end
         # get the element of the single particle hamiltonian
         op_sp_ab = matrix_rep_sp[a,b]
-        # generate all element contributions to the many body hamiltonian
-        for alpha in basis(operator).lookup_sp_states[a]
-        for beta  in basis(operator).lookup_sp_states[b]
-            # add the expectation with ab to the matrix
-            #= exp_ca_2 = expectation_value_ca!(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta], state_buffer)
-            exp_ca_1 = expectation_value_ca(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta])
-            if abs(exp_ca_1 - exp_ca_2) > 1e-10
-                println("ERROR: <$(alpha)| $(a) $(b) |$(beta)> gives $(exp_ca_1) vs. $(exp_ca_2)")
-            end =#
-            matrix_rep[alpha, beta] += expectation_value_ca!(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta], state_buffer) * op_sp_ab
-            #operator.matrix_rep[alpha, beta] += expectation_value_ca(basis(operator), basis(operator)[alpha], a,b, basis(operator)[beta]) * op_sp_ab
-        end
+        # generate all element contributions to the many body hamiltonian (in 1 loop): op_sp_ap*<alpha|c_a^\dagger c_b|beta>
+        # beta are all the mp states that include sp state b
+        for beta in basis(operator).lookup_sp_states[b]
+            state_2 = basis(operator)[beta] # |beta>
+            # copy occupation into buffer
+            # (lookup_sp_states[b] guarantees b is in state_2.occupation)
+            @inbounds for i in 1:N
+                occ_buffer[i] = state_2.occupation[i]
+            end
+            # now replace b with a (remove b -> c_b|beta>)
+            b_pos = findfirst(==(b), occ_buffer)
+            @inbounds occ_buffer[b_pos] = a
+            # Pauli exclusion: if a was already present, the result is zero (c_a^\dagger c_b|beta>=0)
+            # check cheaply by counting occurrences of a after replacement, if already present skip to next iteration
+            if count(==(a), occ_buffer) > 1
+                continue
+            end
+            # sort occ_buffer into canonical form, getting the fermionic sign (c_a^\dagger c_b|beta>=s*|sorted_occ>)
+            # permutation_sign! sorts in place and returns the sign in one pass
+            s = permutation_sign!(occ_buffer)
+            # s==0 means duplicate entries (already caught above, but guard anyway)
+            if s == 0
+                continue
+            end
+            # direct Dict lookup to find <alpha|-- O(1) since occ_buffer is now in canonical
+            # (sorted) form, matching the keys stored by resetLookupIndex!
+            find_alpha = get(basis(operator).lookup_index, occ_buffer, nothing)  # find_alpha = (sign, index); sign from Dict is always 1 for canonical states
+            if find_alpha === nothing
+                continue
+            end
+            alpha = find_alpha[2]
+            # the full fermionic sign is s from the sort above, matrix element 
+            v = s * op_sp_ab # v is always nonzero here (s = ±1, op_sp_ab passed relevant_sp filter)
+            # check for floating point cases before saving matrix element
+            if v != 0
+                matrix_rep[alpha, beta] += v
+            end
         end
     end
     end
