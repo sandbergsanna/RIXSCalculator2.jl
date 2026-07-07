@@ -158,41 +158,112 @@ end
 
 
 
-# contribution of one orbital (ELEKTRON)
+# contribution of one orbital (ELECTRON)
+# we want to compute <alpha|c†_a c_b c†_c c_d|beta>, with scattering_1=(a,b), scattering_2=(c,d)
 function fill_orbital_contribution!(operator :: MPElectron2PScatteringOperator{MPB}, scattering_1::Tuple{Int64,Int64}, scattering_2::Tuple{Int64,Int64}) where {
             N, SPBS <: AbstractSPBasisState,
             MPB <: MPBasis{N,SPBS}
         }
-    # iterate over all suitable orbitals
-    for alpha in basis(operator).lookup_sp_states[scattering_1[1]]
-    for beta  in basis(operator).lookup_sp_states[scattering_2[2]]
-        # fill matrix entry naively
-        operator.matrix_rep[alpha, beta] += expectation_value_caca(
-            basis(operator),
-            basis(operator)[alpha],
-            scattering_1[1], scattering_1[2], scattering_2[1], scattering_2[2],
-            basis(operator)[beta]
-        )
+    # unpack indices
+    a, b = scattering_1  # c†_a c_b
+    c, d = scattering_2  # c†_c c_d
+    # reusable occupation buffer
+    occ_buffer = Vector{Int64}(undef, N)
+    # loop over beta states containing d 
+    for beta  in basis(operator).lookup_sp_states[d]
+        state_2 = basis(operator)[beta] # |beta>
+        # copy occupation into buffer
+        @inbounds for i in 1:N
+            occ_buffer[i] = state_2.occupation[i]
+        end
+        # find position of b -- must be present for c_b to give nonzero (d is guaranteed by lookup_sp_states[d], b must be checked explicitly)
+        b_pos = findfirst(==(b), occ_buffer)
+        if b_pos === nothing
+            continue  # b not in this state -> zero
+        end
+        # apply c†_c c_d|beta>: replace d -> c
+        d_pos = findfirst(==(d), occ_buffer)
+        @inbounds occ_buffer[d_pos] = c
+        # Pauli: c†_c gives zero if c was already present elsewhere
+        if count(==(c), occ_buffer) > 1
+            continue
+        end
+        # apply c†_a c_b: replace b -> a
+        @inbounds occ_buffer[b_pos] = a
+        # Pauli: c†_a gives zero if a was already present elsewhere
+        if count(==(a), occ_buffer) > 1
+            continue
+        end
+        # sort to canonical form, accumulating the full fermionic sign
+        s = permutation_sign!(occ_buffer)
+        # s==0 means duplicate entries 
+        if s == 0
+            continue
+        end
+        # direct Dict lookup to find <alpha|-- occ_buffer is now in canonical
+        # (sorted) form, matching the keys stored by resetLookupIndex!
+        find_alpha = get(basis(operator).lookup_index, occ_buffer, nothing)
+        if find_alpha === nothing
+            continue
+        end
+        alpha = find_alpha[2]
+        # fill matrix entry
+        operator.matrix_rep[alpha, beta] += s
     end
-    end
+
 end
 
 # contribution of one orbital (HOLE)
+# we want to compute <alpha|c†_b c_a c†_d c_c |beta> (indices swapped relative to electron case), with scattering_1=(a,b), scattering_2=(c,d)
 function fill_orbital_contribution!(operator :: MPHole2PScatteringOperator{MPB}, scattering_1::Tuple{Int64,Int64}, scattering_2::Tuple{Int64,Int64}) where {
             N, SPBS <: AbstractSPBasisState,
             MPB <: MPBasis{N,SPBS}
         }
-    # iterate over all suitable orbitals
-    for alpha in basis(operator).lookup_sp_states[scattering_2[2]]
-    for beta  in basis(operator).lookup_sp_states[scattering_1[1]]
-        # fill matrix entry naively
-        operator.matrix_rep[alpha, beta] += expectation_value_caca(
-            basis(operator),
-            basis(operator)[alpha],
-            scattering_1[2], scattering_1[1], scattering_2[2], scattering_2[1],
-            basis(operator)[beta]
-        )
-    end
+    # unpack indices -- hole operator is c†_b c_a c†_d c_c
+    a, b = scattering_1  # c†_b c_a  
+    c, d = scattering_2  # c†_d c_c  
+    # reusable occupation buffer
+    occ_buffer = Vector{Int64}(undef, N)
+    # loop over beta states containing a
+    for beta  in basis(operator).lookup_sp_states[a]
+        state_2 = basis(operator)[beta] #|beta>
+        # copy occupation into buffer
+        @inbounds for i in 1:N
+            occ_buffer[i] = state_2.occupation[i]
+        end
+        # find position of c -- must be present for c_c to give nonzero
+        c_pos = findfirst(==(c), occ_buffer)
+        if c_pos === nothing
+            continue  # c not in this state -> zero, c_a c_c|beta>=0
+        end
+        # apply c†_b c_a|beta>: replace a -> b
+        a_pos = findfirst(==(a), occ_buffer)
+        @inbounds occ_buffer[a_pos] = b
+        # Pauli: c†_b gives zero if b was already present elsewhere
+        if count(==(b), occ_buffer) > 1
+            continue
+        end
+        # apply c†_d c_c: replace c -> d
+        @inbounds occ_buffer[c_pos] = d
+        # Pauli: c†_d gives zero if d was already present elsewhere
+        if count(==(d), occ_buffer) > 1
+            continue
+        end
+        # sort to canonical form, accumulating the full fermionic sign
+        s = permutation_sign!(occ_buffer)
+        # s==0 means duplicate entries
+        if s == 0
+            continue
+        end
+        # direct Dict lookup to find <alpha|-- occ_buffer is now in canonical
+        # (sorted) form, matching the keys stored by resetLookupIndex!
+        find_alpha = get(basis(operator).lookup_index, occ_buffer, nothing)
+        if find_alpha === nothing
+            continue
+        end
+        alpha = find_alpha[2]
+        # fill matrix entry 
+        operator.matrix_rep[alpha, beta] += s
     end
 end
 
