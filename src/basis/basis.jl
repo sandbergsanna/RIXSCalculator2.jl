@@ -2,6 +2,7 @@
 # using Linear algebra package
 using LinearAlgebra
 using Combinatorics
+using SparseArrays
 
 # abstract type for basis states
 include("basisstate_abstract_type.jl")
