@@ -65,7 +65,7 @@ mutable struct LabSystem
 end
 
 
-function LabSystem(hamiltonian :: AbstractOperator)
+function LabSystem(hamiltonian :: AbstractOperator; basis_change::Bool=false,rediagonalize::Bool=false)
     ls = LabSystem(
         hamiltonian,
         Dict{Symbol,Any}(),
@@ -84,7 +84,7 @@ function LabSystem(hamiltonian :: AbstractOperator)
         [1,0,1]
     )
     recalculate_dipole_operators!(ls, new_objects=true, print_info=true)
-    recalculate_hamiltonian!(ls, basis_change=true, rediagonalize=true)
+    recalculate_hamiltonian!(ls, basis_change=basis_change, rediagonalize=rediagonalize)
     return ls
 end
 export LabSystem

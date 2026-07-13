@@ -47,29 +47,66 @@ function projector_matrix(
             sp_overlaps[a,b] = overlap(sp_to[a], sp_from[b])
         end
     end
+    # for each SP state a in basis_to, precompute which SP states b in basis_from have nonzero overlap -- used to prune the MP pair loop.
+    # so cross-site MP pairs are guaranteed zero and can be skipped entirely.
+    sp_partners = [findall(b -> abs(sp_overlaps[a,b]) > 1e-14, 1:length(sp_from)) for a in 1:length(sp_to)]
     # reusable N x N submatrix buffer for the determinant calculation
     S = Matrix{Complex{Float64}}(undef, N, N)
-    # create new MP matrix
-    matrix = spzeros(Complex{Float64}, length(basis_to),length(basis_from))
+    # pre-allocate reusable buffers for the inner loop
+    allowed      = Int[]           # SP states in basis_from with nonzero overlap
+    candidate_js = Int[]           # candidate j states before subset filter
+    # triplet construction for indices and overlaps (I,J,ovl)
+    Is = Int[]
+    Js = Int[]
+    ovls = Complex{Float64}[]
     # fill the matrix
     for i in 1:length(basis_to)
-    for j in 1:length(basis_from)
-        occ_i = basis_to[i].occupation    # length-N vector of SP indices
-        occ_j = basis_from[j].occupation  # length-N vector of SP indices
-        # fill using precomputed SP overlap table
-        @inbounds for k in 1:N
-            @inbounds for l in 1:N
-                S[k,l] = sp_overlaps[occ_i[k], occ_j[l]]
+        occ_i = basis_to[i].occupation # length-N vector of SP indices
+        # fill! in_allowed with false and empty! allowed
+        empty!(allowed)
+        # collect all SP states in basis_from that any orbital of state i could possibly overlap with
+        for a in occ_i
+            for b in sp_partners[a]
+                if !(b in allowed)
+                    push!(allowed, b)
+                end
             end
         end
-        # MP overlap = det(S) for fermionic states (Slater determinant overlap)
-        v=det(S)
-        if abs(v)> 1e-14
-            matrix[i,j] = v
+        # if no nonzero overlaps, skip to next iteration
+        if isempty(allowed)
+            continue
+        end
+        # collect candidate j states from lookup_sp_states for each allowed SP orbital
+        empty!(candidate_js)
+        for b in allowed
+            for j in basis_from.lookup_sp_states[b]
+                push!(candidate_js, j)
+            end
+        end
+        unique!(candidate_js)  # deduplicate in place
+        # further filter: j's entire occupation must be a subset of allowed 
+        # (union above is too broad -- it includes states with orbitals outside allowed, which are guaranteed zero det)
+        for j in candidate_js
+            occ_j = basis_from[j].occupation  # length-N vector of SP indices
+            if !all(b -> b in allowed, occ_j)
+                continue
+            end
+            # fill using precomputed SP overlap table
+            @inbounds for k in 1:N
+                @inbounds for l in 1:N
+                    S[k,l] = sp_overlaps[occ_i[k], occ_j[l]]
+                end
+            end
+            # MP overlap = det(S) for fermionic states (Slater determinant overlap)
+            ovl=det(S)
+            if abs(ovl)> 1e-14
+                push!(Is, i)
+                push!(Js, j)
+                push!(ovls, ovl)
+            end
         end
     end
-    end
     # return the matrix
-    return matrix
+    return sparse(Is, Js, ovls, length(basis_to), length(basis_from))
 end
 export projector_matrix
