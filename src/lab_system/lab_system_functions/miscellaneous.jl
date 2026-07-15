@@ -130,6 +130,7 @@ function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false, 
     recalculate!(lab.dipole_hor, false)
     recalculate!(lab.dipole_ver, false)
 end
+export recalculate_dipole_operators!
 
 # recalculate the hamiltonian
 function recalculate_hamiltonian!(ls :: LabSystem; basis_change::Bool=true, rediagonalize::Bool=true)
@@ -140,6 +141,7 @@ function recalculate_hamiltonian!(ls :: LabSystem; basis_change::Bool=true, redi
         ls.eigensys = eigensystem(ls.hamiltonian)
     end
 end
+export recalculate_hamiltonian!
 
 # possibly recalculate the matrix representation
 function recalculate!(ls :: LabSystem; basis_change::Bool=true, rediagonalize::Bool=true)
