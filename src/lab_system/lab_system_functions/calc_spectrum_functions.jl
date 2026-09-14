@@ -61,4 +61,31 @@ function theta_dependence_multiplet(lab::LabSystem,theta_values::Vector{<:Real},
     end
     return intensities
 end
+
+#Function - Calculate intensities vs theta (from gs multiplet to a given multiplet). 
+#Input:LabSystem, theta_values, twotheta_values, dQ, to_multiplet
+function theta_dependence_multiplet(lab::LabSystem,theta_values::Vector{<:Real}, twotheta_values :: Vector{<:Real}, dQ :: Real, to_multiplet::Int64)
+    # get multiplets
+    energy_values,multiplet_indices=multiplets(lab.eigensys)
+    # initalize intensities
+    intensities=zeros(length(theta_values))
+    # Iterate over all values for dQ
+    for i in 1:length(theta_values)
+         # set scattering angles
+        set_scattering_angles_deg!(lab, theta_values[i],twotheta_values[i], dQ)
+        recalculate_dipole_operators!(lab)
+        # get dipole matrices
+        dipole_matrix_hor=matrix_representation(lab.dipole_hor)
+        dipole_matrix_ver=matrix_representation(lab.dipole_ver)
+        # Iterate over states in excited multiplet
+        for j in multiplet_indices[to_multiplet]
+            # Iterate over states in gs multiplet
+            for k in multiplet_indices[1]
+                intensities[i]+=abs(get_amplitude(lab.eigensys,dipole_matrix_hor,k,j)+get_amplitude(lab.eigensys,dipole_matrix_ver,k,j))^2
+            end
+        end
+    end
+    return intensities
+end
+
 export theta_dependence_multiplet
