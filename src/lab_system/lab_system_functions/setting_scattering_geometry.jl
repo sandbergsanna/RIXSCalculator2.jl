@@ -155,7 +155,7 @@ export setup_dQ!
 
 The function sets the beams depending on angles `angle_theta` and `angle_two_theta` in geometry. The angles must be given in radians.
 q_beam is the magnitude of q_in and q_out.
-    """
+"""
 function set_scattering_angles!(
             lab             :: LabSystem,
             angle_theta     :: Real,
@@ -172,27 +172,29 @@ function set_scattering_angles!(
     # return nothing
     return nothing
 end
+
 # set the beams depending on THETA and TWO THETA angles in geometry
 """
     set_scattering_angles_deg!(
         lab             :: LabSystem,
         angle_theta     :: Real,
         angle_two_theta :: Real,
-        dQ              :: Real = 1.0,
+        q_beam              :: Real = 1.0,
         axis_perpendicular::Vector{<:Real} = [0,1,0]
     )
 
 The function sets the beams depending on angles `angle_theta` and `angle_two_theta` in geometry. The angles must be given in arc degrees.
+q_beam is the magnitude of q_in and q_out.
 """
 function set_scattering_angles_deg!(
             lab             :: LabSystem,
             angle_theta     :: Real,
             angle_two_theta :: Real,
-            dQ              :: Real = 1.0,
+            q_beam              :: Real = 1.0,
             axis_perpendicular::Vector{<:Real} = [0,1,0]
         )
     # pass to the normal function
-    set_scattering_angles!(lab, angle_theta*pi/180, angle_two_theta*pi/180, dQ, axis_perpendicular)
+    set_scattering_angles!(lab, angle_theta*pi/180, angle_two_theta*pi/180, q_beam, axis_perpendicular)
 end
 export set_scattering_angles!, set_scattering_angles_deg!
 
