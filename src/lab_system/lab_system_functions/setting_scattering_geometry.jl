@@ -149,22 +149,23 @@ export setup_dQ!
         lab             :: LabSystem,
         angle_theta     :: Real,
         angle_two_theta :: Real,
-        dQ              :: Real = 1.0,
+        q_beam              :: Real = 1.0,
         axis_perpendicular::Vector{<:Real} = [0,1,0]
     )
 
 The function sets the beams depending on angles `angle_theta` and `angle_two_theta` in geometry. The angles must be given in radians.
-"""
+q_beam is the magnitude of q_in and q_out.
+    """
 function set_scattering_angles!(
             lab             :: LabSystem,
             angle_theta     :: Real,
             angle_two_theta :: Real,
-            dQ              :: Real = 1.0,
+            q_beam              :: Real = 1.0,
             axis_perpendicular::Vector{<:Real} = [0,1,0]
         )
     # calculate q's
-    q_in  = [-cos(angle_theta)                  , 0,  sin(angle_theta)                  ] .* dQ/(sin(angle_theta) + sin(angle_two_theta - angle_theta))
-    q_out = [-cos(angle_two_theta - angle_theta), 0, -sin(angle_two_theta - angle_theta)] .* dQ/(sin(angle_theta) + sin(angle_two_theta - angle_theta))
+    q_in  = [-cos(angle_theta)                  , 0,  sin(angle_theta)                  ] .* q_beam
+    q_out = [-cos(angle_two_theta - angle_theta), 0, -sin(angle_two_theta - angle_theta)] .* q_beam
     # pass to lab system
     set_q_in!(lab, q_in, axis_perpendicular)
     set_q_out!(lab, q_out, axis_perpendicular)

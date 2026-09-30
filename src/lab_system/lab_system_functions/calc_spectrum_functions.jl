@@ -10,8 +10,16 @@ function get_spectrum(
     return get_spectrum(ls.eigensys, ls.dipole_hor, args...; kwargs...) + get_spectrum(ls.eigensys, ls.dipole_ver, args...; kwargs...)
 end
 
-#Function - Calculate intensities vs transferred momentum dq (from gs multiplet to given multiplet). 
-# Input:LabSystem, dq_values, q_beam, to_multiplet
+"""
+   dq_dependence_multiplet(
+        lab::LabSystem,
+        dq_values::Vector{<:Real},
+        q_beam::Real,
+        to_multiplet::Int64
+    ) 
+Function that calculates intensities vs transferred momentum dq (from gs multiplet to a given multiplet). 
+q_beam is the magnitude of q_in and q_out.
+"""
 function dq_dependence_multiplet(lab::LabSystem,dq_values::Vector{<:Real},q_beam::Real,to_multiplet::Int64)
     # get multiplets
     energy_values,multiplet_indices=multiplets(lab.eigensys)
@@ -36,17 +44,26 @@ function dq_dependence_multiplet(lab::LabSystem,dq_values::Vector{<:Real},q_beam
 end
 export dq_dependence_multiplet
 
-#Function - Calculate intensities vs theta (from gs multiplet to a given multiplet). 
-#Input:LabSystem, theta_values, twotheta, dQ, to_multiplet
-function theta_dependence_multiplet(lab::LabSystem,theta_values::Vector{<:Real}, twotheta :: Real, dQ :: Real, to_multiplet::Int64)
+"""
+    theta_dependence_multiplet(
+        lab::LabSystem,
+        theta_values::Vector{<:Real}, 
+        twotheta :: Real, 
+        q_beam :: Real, 
+        to_multiplet::Int64
+    )
+Function that calculates intensities vs theta (from gs multiplet to a given multiplet). 
+q_beam is the magnitude of q_in and q_out.
+"""
+function theta_dependence_multiplet(lab::LabSystem,theta_values::Vector{<:Real}, twotheta :: Real, q_beam :: Real, to_multiplet::Int64)
     # get multiplets
     energy_values,multiplet_indices=multiplets(lab.eigensys)
     # initalize intensities
     intensities=zeros(length(theta_values))
-    # Iterate over all values for dQ
+    # Iterate over all values for theta
     for i in 1:length(theta_values)
          # set scattering angles
-        set_scattering_angles_deg!(lab, theta_values[i],twotheta, dQ)
+        set_scattering_angles_deg!(lab, theta_values[i],twotheta, q_beam)
         recalculate_dipole_operators!(lab)
         # get dipole matrices
         dipole_matrix_hor=matrix_representation(lab.dipole_hor)
@@ -62,17 +79,26 @@ function theta_dependence_multiplet(lab::LabSystem,theta_values::Vector{<:Real},
     return intensities
 end
 
-#Function - Calculate intensities vs theta (from gs multiplet to a given multiplet). 
-#Input:LabSystem, theta_values, twotheta_values, dQ, to_multiplet
-function theta_dependence_multiplet(lab::LabSystem,theta_values::Vector{<:Real}, twotheta_values :: Vector{<:Real}, dQ :: Real, to_multiplet::Int64)
+"""
+    theta_dependence_multiplet(
+        lab::LabSystem,
+        theta_values::Vector{<:Real}, 
+        twotheta_values :: Vector{<:Real}, 
+        q_beam :: Real, 
+        to_multiplet::Int64
+    )
+Function that calculates intensities vs theta (from gs multiplet to a given multiplet). 
+q_beam is the magnitude of q_in and q_out.
+"""
+function theta_dependence_multiplet(lab::LabSystem,theta_values::Vector{<:Real}, twotheta_values :: Vector{<:Real}, q_beam :: Real, to_multiplet::Int64)
     # get multiplets
     energy_values,multiplet_indices=multiplets(lab.eigensys)
     # initalize intensities
     intensities=zeros(length(theta_values))
-    # Iterate over all values for dQ
+    # Iterate over all values for theta and twotheta values
     for i in 1:length(theta_values)
          # set scattering angles
-        set_scattering_angles_deg!(lab, theta_values[i],twotheta_values[i], dQ)
+        set_scattering_angles_deg!(lab, theta_values[i],twotheta_values[i], q_beam)
         recalculate_dipole_operators!(lab)
         # get dipole matrices
         dipole_matrix_hor=matrix_representation(lab.dipole_hor)
