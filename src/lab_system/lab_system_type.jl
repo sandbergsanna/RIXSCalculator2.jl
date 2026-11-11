@@ -29,6 +29,8 @@ mutable struct LabSystem
 
     # Hamiltonian
     hamiltonian :: AbstractOperator
+    # electron or hole picture
+    picture :: Symbol
     # eigensystem
     eigensys :: Dict{Symbol,Any}
 
@@ -65,9 +67,10 @@ mutable struct LabSystem
 end
 
 
-function LabSystem(hamiltonian :: AbstractOperator; basis_change::Bool=false,rediagonalize::Bool=false)
+function LabSystem(hamiltonian :: AbstractOperator; picture :: Symbol = :hole, basis_change::Bool=false,rediagonalize::Bool=false)
     ls = LabSystem(
         hamiltonian,
+        picture,
         Dict{Symbol,Any}(),
         ZeroOperator(getT2GBasisXYZ()),
         ZeroOperator(getT2GBasisXYZ()),
@@ -115,6 +118,6 @@ function show(io::IO, lab::LabSystem)
         print(io, "      -- > eps vertical:   eps_in || $(round.(lab.dipoles_ver[s].eps_in, digits=3)) -> eps_out || $(round.(lab.dipoles_ver[s].eps_out, digits=3))\n")
     end
     # print the hamiltonian
-    print(io, "\nCurrent hamiltonian is given as ")
+    print(io, "\nCurrent hamiltonian in $(lab.picture) picture is given as ")
     show(io, lab.hamiltonian)
 end

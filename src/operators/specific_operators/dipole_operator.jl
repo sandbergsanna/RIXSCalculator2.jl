@@ -8,6 +8,8 @@
 
 - `basis :: SPBasis{SPMSBasisState{BasisStateXYZ}}`, a single particle basis ;
 
+- `picture :: Symbol`, electron or hole picture ;
+
 - `edge :: Int64`, the current edge;
 
 - `basis_core :: SPBasis{SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}}`, the core hole basis  (p orbitals or core with j=1/2 or j=3/2);
@@ -38,6 +40,8 @@ mutable struct DipoleOperator <: AbstractSPMSOperator{SPBasis{SPMSBasisState{Bas
     # the inner basis (XYZ type basis)
     basis :: SPBasis{SPMSBasisState{BasisStateXYZ}}
 
+    # electron or hole picture
+    picture :: Symbol
     # the current edge
     edge :: Int64
     # the core hole basis (p orbitals or core with j=1/2 or j=3/2)
@@ -78,6 +82,7 @@ end
 """
     DipoleOperator(
                 ;
+                picture :: Symbol = :hole,
                 edge::Int64=3,
                 site::Int64=1,
                 site_position::Vector{<:Real}=[0,0,0],
@@ -91,6 +96,7 @@ Creates an object of type `DipoleOperator` with the input values.
 """
 function DipoleOperator(
             ;
+            picture::Symbol=:hole,
             edge::Int64=3,
             site::Int64=1,
             site_position::Vector{<:Real}=[0,0,0],
@@ -104,6 +110,7 @@ function DipoleOperator(
     # create a new object
     op = DipoleOperator(
         SPBasis{SPMSBasisState{BasisStateXYZ}}([ SPMSBasisState{BasisStateXYZ}(state, site) for state in states(getT2GBasisXYZ()) ]),
+        picture,
         edge,
         SPBasis{SPMSBasisState{SPSSCompositeBasisState{SPBasis{BasisStateLS}}}}([]),
         CoordinateFrame(),
@@ -142,9 +149,10 @@ function DipoleOperator(
         ;
         kwargs...
     ) where {N, SPSS <: AbstractSPSSBasisState, SPBS <: SPMSBasisState{SPSS}, MPB <: MPBasis{N,SPBS}}
-
+    # single particle operator
+    sp_op=DipoleOperator(;kwargs...)
     # return the 1p generalization of projection to that basis
-    return MPGeneralizedSPOperator(basis, ProjectorOperator(DipoleOperator(;kwargs...), basis.single_particle_basis))
+    return MPGeneralizedSPOperator(basis, ProjectorOperator(sp_op, basis.single_particle_basis))
 end
 export DipoleOperator
 
@@ -235,7 +243,15 @@ function recalculate!(op :: DipoleOperator, basis_change::Bool=true)
              (op.D_z .* op.eps_out[3])) .* exp(-im*dot(op.position, op.q_out))
 
     # compose the complete string
-    op.matrix_rep = D_out' * op.core_hole_projection * D_in
+    # hole picture: M = Σ D_{l,l'} <d†_{l'} d_l>
+    if op.picture == :hole
+        op.matrix_rep = D_out' * op.core_hole_projection * D_in
+    # electron picture: M = Tr(D)δ - Σ D_{l,l'} <d†_l d_{l'}>
+    elseif op.picture == :electron
+        op.matrix_rep = -transpose(D_out' * op.core_hole_projection * D_in)
+    else
+        error("Unknown picture: ", op.picture, ". Choose :electron or :hole.")
+    end
 
     # return nothing
     return nothing

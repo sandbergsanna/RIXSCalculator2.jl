@@ -15,6 +15,7 @@ function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false, 
             site_position  = lab.sites[s].position
             # create new dipole operators
             lab.dipoles_hor[s] = DipoleOperator(
+                        picture= lab.picture,
                         edge = lab.edge,
                         site = s,
                         site_position = site_position,
@@ -24,6 +25,7 @@ function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false, 
                         q_out   = site_q_out
                     )
             lab.dipoles_ver[s] = DipoleOperator(
+                        picture= lab.picture,
                         edge = lab.edge,
                         site = s,
                         site_position = site_position,
@@ -116,12 +118,14 @@ function recalculate_dipole_operators!(lab::LabSystem; new_objects::Bool=false, 
             else
                 error("Unknown spin quantization axis "*string(lab.spin_quantization))
             end
-            if lab.dipoles_ver[s].edge != lab.edge
+            if lab.dipoles_ver[s].edge != lab.edge || lab.dipoles_ver[s].picture  != lab.picture
                 lab.dipoles_ver[s].edge = lab.edge
+                lab.dipoles_ver[s].picture  = lab.picture
                 recalculate!(lab.dipoles_ver[s], true)
             end
-            if lab.dipoles_hor[s].edge != lab.edge
+            if lab.dipoles_hor[s].edge != lab.edge || lab.dipoles_hor[s].picture  != lab.picture 
                 lab.dipoles_hor[s].edge = lab.edge
+                lab.dipoles_hor[s].picture  = lab.picture
                 recalculate!(lab.dipoles_hor[s], true)
             end
         end
@@ -212,7 +216,7 @@ function set_parameter!(ls :: LabSystem, parameter :: Symbol, value; print_resul
             # set the value on site s
             found_param_s, changed_matrix_s = set_parameter!(ls, parameter, value; print_result=print_result, recalculate=false, site=s, relative_to=relative_to, kwargs...)
             # process parameters
-            found_param_s, changed_matrix_s = (found_param || found_param_s), (changed_matrix || changed_matrix_s)
+            found_param, changed_matrix = (found_param || found_param_s), (changed_matrix || changed_matrix_s)
         end
         # maybe recalculate
         if recalculate
