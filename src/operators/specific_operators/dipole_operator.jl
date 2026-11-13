@@ -237,10 +237,10 @@ function recalculate!(op :: DipoleOperator, basis_change::Bool=true)
     # compose D matrices
     D_in  = ((op.D_x .* op.eps_in[1])   .+
              (op.D_y .* op.eps_in[2])   .+
-             (op.D_z .* op.eps_in[3]))  .* exp(-im*dot(op.position, op.q_in))
+             (op.D_z .* op.eps_in[3]))  .* exp(im*dot(op.position, op.q_in))
     D_out = ((op.D_x .* op.eps_out[1])  .+
              (op.D_y .* op.eps_out[2])  .+
-             (op.D_z .* op.eps_out[3])) .* exp(-im*dot(op.position, op.q_out))
+             (op.D_z .* op.eps_out[3])) .* exp(im*dot(op.position, op.q_out))
 
     # compose the complete string
     # hole picture: M = Σ D_{l,l'} <d†_{l'} d_l>
